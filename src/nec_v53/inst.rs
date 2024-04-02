@@ -98,22 +98,22 @@ define_instruction_set! {
     [0x3E, "DS0:", "Set segment override to data segment 0", ds0],
     [0x3F, "",     "",                                       unimplemented],
 
-    [0x40, "INC AW", "Increment AW by 1", unimplemented],
-    [0x41, "INC CW", "Increment CW by 1", unimplemented],
-    [0x42, "INC DW", "Increment DW by 1", unimplemented],
-    [0x43, "INC BW", "Increment BW by 1", unimplemented],
-    [0x44, "INC SP", "Increment SP by 1", unimplemented],
-    [0x45, "INC BP", "Increment BP by 1", unimplemented],
-    [0x46, "INC IX", "Increment IX by 1", unimplemented],
-    [0x47, "INC IY", "Increment IY by 1", unimplemented],
+    [0x40, "INC AW", "Increment AW by 1", inc_aw],
+    [0x41, "INC CW", "Increment CW by 1", inc_cw],
+    [0x42, "INC DW", "Increment DW by 1", inc_dw],
+    [0x43, "INC BW", "Increment BW by 1", inc_bw],
+    [0x44, "INC SP", "Increment SP by 1", inc_sp],
+    [0x45, "INC BP", "Increment BP by 1", inc_bp],
+    [0x46, "INC IX", "Increment IX by 1", inc_ix],
+    [0x47, "INC IY", "Increment IY by 1", inc_iy],
     [0x48, "DEC AW", "Decrement AW by 1", dec_aw],
     [0x49, "DEC CW", "Decrement CW by 1", dec_cw],
     [0x4A, "DEC DW", "Decrement DW by 1", dec_dw],
     [0x4B, "DEC BW", "Decrement BW by 1", dec_bw],
-    [0x4C, "DEC SP", "Decrement SP by 1", unimplemented],
-    [0x4D, "DEC BP", "Decrement BP by 1", unimplemented],
-    [0x4E, "DEC IX", "Decrement IX by 1", unimplemented],
-    [0x4F, "DEC IY", "Decrement IY by 1", unimplemented],
+    [0x4C, "DEC SP", "Decrement SP by 1", dec_sp],
+    [0x4D, "DEC BP", "Decrement BP by 1", dec_bp],
+    [0x4E, "DEC IX", "Decrement IX by 1", dec_ix],
+    [0x4F, "DEC IY", "Decrement IY by 1", dec_iy],
 
     [0x50, "", "", unimplemented],
     [0x51, "", "", unimplemented],
@@ -735,26 +735,194 @@ fn dbnz (state: &mut State) -> u64 {
 }
 
 #[inline]
+fn inc_aw (state: &mut State) -> u64 {
+    let (value, overflow) = state.aw.overflowing_add(1);
+    state.aw = value;
+    if overflow {
+        state.cy_on()
+    } else {
+        state.cy_off()
+    }
+    2
+}
+
+#[inline]
+fn inc_bw (state: &mut State) -> u64 {
+    let (value, overflow) = state.bw.overflowing_add(1);
+    state.bw = value;
+    if overflow {
+        state.cy_on()
+    } else {
+        state.cy_off()
+    }
+    2
+}
+
+#[inline]
+fn inc_cw (state: &mut State) -> u64 {
+    let (value, overflow) = state.cw.overflowing_add(1);
+    state.cw = value;
+    if overflow {
+        state.cy_on()
+    } else {
+        state.cy_off()
+    }
+    2
+}
+
+#[inline]
+fn inc_dw (state: &mut State) -> u64 {
+    let (value, overflow) = state.dw.overflowing_add(1);
+    state.dw = value;
+    if overflow {
+        state.cy_on()
+    } else {
+        state.cy_off()
+    }
+    2
+}
+
+#[inline]
+fn inc_sp (state: &mut State) -> u64 {
+    let (value, overflow) = state.sp.overflowing_add(1);
+    state.sp = value;
+    if overflow {
+        state.cy_on()
+    } else {
+        state.cy_off()
+    }
+    2
+}
+
+#[inline]
+fn inc_bp (state: &mut State) -> u64 {
+    let (value, overflow) = state.bp.overflowing_add(1);
+    state.bp = value;
+    if overflow {
+        state.cy_on()
+    } else {
+        state.cy_off()
+    }
+    2
+}
+
+#[inline]
+fn inc_ix (state: &mut State) -> u64 {
+    let (value, overflow) = state.ix.overflowing_add(1);
+    state.ix = value;
+    if overflow {
+        state.cy_on()
+    } else {
+        state.cy_off()
+    }
+    2
+}
+
+#[inline]
+fn inc_iy (state: &mut State) -> u64 {
+    let (value, overflow) = state.ix.overflowing_add(1);
+    state.ix = value;
+    if overflow {
+        state.cy_on()
+    } else {
+        state.cy_off()
+    }
+    2
+}
+
+#[inline]
 fn dec_aw (state: &mut State) -> u64 {
-    state.aw = state.aw.overflowing_sub(1).0;
+    let (value, overflow) = state.aw.overflowing_sub(1);
+    state.aw = value;
+    if overflow {
+        state.cy_on()
+    } else {
+        state.cy_off()
+    }
     2
 }
 
 #[inline]
 fn dec_bw (state: &mut State) -> u64 {
-    state.bw = state.aw.overflowing_sub(1).0;
+    let (value, overflow) = state.bw.overflowing_sub(1);
+    state.bw = value;
+    if overflow {
+        state.cy_on()
+    } else {
+        state.cy_off()
+    }
     2
 }
 
 #[inline]
 fn dec_cw (state: &mut State) -> u64 {
-    state.cw = state.aw.overflowing_sub(1).0;
+    let (value, overflow) = state.cw.overflowing_sub(1);
+    state.cw = value;
+    if overflow {
+        state.cy_on()
+    } else {
+        state.cy_off()
+    }
     2
 }
 
 #[inline]
 fn dec_dw (state: &mut State) -> u64 {
-    state.dw = state.aw.overflowing_sub(1).0;
+    let (value, overflow) = state.dw.overflowing_sub(1);
+    state.dw = value;
+    if overflow {
+        state.cy_on()
+    } else {
+        state.cy_off()
+    }
+    2
+}
+
+#[inline]
+fn dec_sp (state: &mut State) -> u64 {
+    let (value, overflow) = state.sp.overflowing_sub(1);
+    state.sp = value;
+    if overflow {
+        state.cy_on()
+    } else {
+        state.cy_off()
+    }
+    2
+}
+
+#[inline]
+fn dec_bp (state: &mut State) -> u64 {
+    let (value, overflow) = state.bp.overflowing_sub(1);
+    state.bp = value;
+    if overflow {
+        state.cy_on()
+    } else {
+        state.cy_off()
+    }
+    2
+}
+
+#[inline]
+fn dec_ix (state: &mut State) -> u64 {
+    let (value, overflow) = state.ix.overflowing_sub(1);
+    state.ix = value;
+    if overflow {
+        state.cy_on()
+    } else {
+        state.cy_off()
+    }
+    2
+}
+
+#[inline]
+fn dec_iy (state: &mut State) -> u64 {
+    let (value, overflow) = state.ix.overflowing_sub(1);
+    state.ix = value;
+    if overflow {
+        state.cy_on()
+    } else {
+        state.cy_off()
+    }
     2
 }
 

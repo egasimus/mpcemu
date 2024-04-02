@@ -232,92 +232,173 @@ impl State {
         self.dw = self.dw | value as u16;
     }
 
+    /// Overflow flag.
     pub fn v (&self) -> bool {
         (self.psw & (1 << 11)) > 0
     }
+    /// Set overflow flag:
+    ///
+    /// - TODO
     pub fn v_on (&mut self) {
         self.psw = self.psw | (1<<11)
     }
+    /// Reset overflow flag:
+    ///
+    /// - TODO
     pub fn v_off (&mut self) {
         self.psw = self.psw & (1<<11)
     }
 
+    /// Direction flag.
     pub fn dir (&mut self) -> bool {
         (self.psw & (1 << 10)) > 0
     }
+    /// Set direction flag:
+    ///
+    /// - TODO
     pub fn dir_on (&mut self) {
         self.psw = self.psw | (1<<10)
     }
+    /// Reset direction flag:
+    ///
+    /// - TODO
     pub fn dir_off (&mut self) {
         self.psw = self.psw & (1<<10)
     }
 
+    /// Interrupt enable flag.
     pub fn ie (&mut self) -> bool {
         (self.psw & (1 << 9)) > 0
     }
+    /// Set interrupt enable flag:
+    ///
+    /// - TODO
     pub fn ie_on (&mut self) {
         self.psw = self.psw | (1<<9)
     }
+    /// Reset interrupt enable flag:
+    ///
+    /// - TODO
     pub fn ie_off (&mut self) {
         self.psw = self.psw & (1<<9)
     }
 
+    /// Break flag
     pub fn brk (&mut self) -> bool {
         (self.psw & (1 << 8)) > 0
     }
+    /// Set break flag:
+    ///
+    /// - TODO
     pub fn brk_on (&mut self) {
         self.psw = self.psw | (1<<8)
     }
+    /// Clear break flag:
+    ///
+    /// - TODO
     pub fn brk_off (&mut self) {
         self.psw = self.psw & (1<<8)
     }
 
+    /// Sign flag
     pub fn s (&mut self) -> bool {
         (self.psw & (1 << 7)) > 0
     }
+    /// Set sign flag:
+    ///
+    /// - TODO
     pub fn s_on (&mut self) {
         self.psw = self.psw | (1<<7)
     }
+    /// Reset sign flag:
+    ///
+    /// - TODO
     pub fn s_off (&mut self) {
         self.psw = self.psw & (1<<7)
     }
 
+    /// Zero flag
     pub fn z (&mut self) -> bool {
         (self.psw & (1 << 6)) > 0
     }
+    /// Set zero flag:
+    ///
+    /// - TODO
     pub fn z_on (&mut self) {
         self.psw = self.psw | (1<<6)
     }
+    /// Reset zero flag:
+    ///
+    /// - TODO
     pub fn z_off (&mut self) {
         self.psw = self.psw & (1<<6)
     }
 
+    /// Auxiliary carry flag.
     pub fn ac (&mut self) -> bool {
         (self.psw & (1 << 4)) > 0
     }
+    /// Set auxiliary carry flag:
+    ///
+    /// - TODO
     pub fn ac_on (&mut self) {
         self.psw = self.psw | (1<<4)
     }
+    /// Reset auxiliary carry flag:
+    ///
+    /// - TODO
     pub fn ac_off (&mut self) {
         self.psw = self.psw & (1<<4)
     }
 
+    /// Parity flag.
     pub fn p (&mut self) -> bool {
         (self.psw & (1 << 2)) > 0
     }
+    /// Set parity flag:
+    ///
+    /// - After binary add/sub, logical op, shift,
+    ///   if there are zero or an even number of 1s
+    ///   in the result.
     pub fn p_on (&mut self) {
         self.psw = self.psw | (1<<2)
     }
+    /// Reset parity flag:
+    ///
+    /// - After binary add/sub, logical op, shift,
+    ///   if there is an odd number of 1s in the result.
     pub fn p_off (&mut self) {
         self.psw = self.psw & !(1<<2)
     }
 
+    /// Carry flag.
     pub fn cy (&mut self) -> bool {
         (self.psw & (1 << 0)) > 0
     }
+    /// Set carry flag:
+    ///
+    /// - After byte add/sub if carry/borrow occurs from bit 7
+    /// - After word add/sub if carry/borrow occurs from bit 15
+    /// - After unsigned byte mul if AH is not 0
+    /// - After signed byte mul of AH does not sign-extend AL
+    /// - After unsigned word mul if DW is not 0
+    /// - After signed word mul if DW does not sign-extend AW
+    /// - After 8-bit immediate mul if product exceeds 16 bits
+    /// - If a bit shifted/rotated to CY is 1
     pub fn cy_on (&mut self) {
         self.psw = self.psw | (1<<0)
     }
+    /// Reset carry flag:
+    ///
+    /// - After byte add/sub if carry/borrow does not occur from bit 7
+    /// - After word add/sub if carry/borrow does not occur from bit 15
+    /// - Always every logical operation
+    /// - After unsigned byte multiplication if AH is 0
+    /// - After signed byte multiplication of AH sign-extends AL
+    /// - After unsigned word mul if DW is 0
+    /// - After signed word mul if DW sign-extends AW
+    /// - After 8-bit immediate mul if product is within 16 bits
+    /// - If a bit shifted/rotated to CY is 0
     pub fn cy_off (&mut self) {
         self.psw = self.psw & !(1<<0)
     }
