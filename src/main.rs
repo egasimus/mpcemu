@@ -29,7 +29,7 @@ fn main () -> Result<(), Box<dyn std::error::Error>> {
     loop {
         let segment = cpu.ps as u32 * 0x10;
         let address = cpu.address();
-        let opcode = cpu.memory[address];
+        let opcode  = cpu.memory[address];
         //println!("0x{:x} + 0x{:x} = 0x{:x}", segment, cpu.pc, segment + cpu.pc as u32);
         println!("{address:x} {opcode:x} {}", nec_v53::get_instruction_name(opcode));
         cpu.step();

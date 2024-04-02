@@ -1,4 +1,4 @@
-use super::State;
+use super::{State, Segment};
 
 macro_rules! define_instruction_set (
 
@@ -64,56 +64,56 @@ define_instruction_set! {
     [0x1E, "", "", unimplemented],
     [0x1F, "", "", unimplemented],
 
-    [0x20, "", "", unimplemented],
-    [0x21, "", "", unimplemented],
-    [0x22, "", "", unimplemented],
-    [0x23, "", "", unimplemented],
-    [0x24, "", "", unimplemented],
-    [0x25, "", "", unimplemented],
-    [0x26, "", "", unimplemented],
-    [0x27, "", "", unimplemented],
-    [0x28, "", "", unimplemented],
-    [0x29, "", "", unimplemented],
-    [0x2A, "", "", unimplemented],
-    [0x2B, "", "", unimplemented],
-    [0x2C, "", "", unimplemented],
-    [0x2D, "", "", unimplemented],
-    [0x2E, "PS:", "", unimplemented],
-    [0x2F, "", "", unimplemented],
+    [0x20, "",     "",                                        unimplemented],
+    [0x21, "",     "",                                        unimplemented],
+    [0x22, "",     "",                                        unimplemented],
+    [0x23, "",     "",                                        unimplemented],
+    [0x24, "",     "",                                        unimplemented],
+    [0x25, "",     "",                                        unimplemented],
+    [0x26, "DS1:", "Set segment override to data segment 1",  ds1],
+    [0x27, "",     "",                                        unimplemented],
+    [0x28, "",     "",                                        unimplemented],
+    [0x29, "",     "",                                        unimplemented],
+    [0x2A, "",     "",                                        unimplemented],
+    [0x2B, "",     "",                                        unimplemented],
+    [0x2C, "",     "",                                        unimplemented],
+    [0x2D, "",     "",                                        unimplemented],
+    [0x2E, "PS:",  "Set segment override to program segment", ps],
+    [0x2F, "",     "",                                        unimplemented],
 
-    [0x30, "", "", unimplemented],
-    [0x31, "", "", unimplemented],
-    [0x32, "", "", unimplemented],
-    [0x33, "", "", unimplemented],
-    [0x34, "", "", unimplemented],
-    [0x35, "", "", unimplemented],
-    [0x36, "", "", unimplemented],
-    [0x37, "", "", unimplemented],
-    [0x38, "", "", unimplemented],
-    [0x39, "", "", unimplemented],
-    [0x3A, "", "", unimplemented],
-    [0x3B, "", "", unimplemented],
-    [0x3C, "", "", unimplemented],
-    [0x3D, "CMP", "w, ia", unimplemented],
-    [0x3E, "", "", unimplemented],
-    [0x3F, "", "", unimplemented],
+    [0x30, "",     "",                                       unimplemented],
+    [0x31, "",     "",                                       unimplemented],
+    [0x32, "",     "",                                       unimplemented],
+    [0x33, "",     "",                                       unimplemented],
+    [0x34, "",     "",                                       unimplemented],
+    [0x35, "",     "",                                       unimplemented],
+    [0x36, "SS:",  "Set segment override to stack segment",  ss],
+    [0x37, "",     "",                                       unimplemented],
+    [0x38, "",     "",                                       unimplemented],
+    [0x39, "",     "",                                       unimplemented],
+    [0x3A, "",     "",                                       unimplemented],
+    [0x3B, "",     "",                                       unimplemented],
+    [0x3C, "CMP",  "b, ia",                                  unimplemented],
+    [0x3D, "CMP",  "w, ia",                                  unimplemented],
+    [0x3E, "DS0:", "Set segment override to data segment 0", ds0],
+    [0x3F, "",     "",                                       unimplemented],
 
-    [0x40, "", "", unimplemented],
-    [0x41, "", "", unimplemented],
-    [0x42, "INC", "Increment", unimplemented],
-    [0x43, "", "", unimplemented],
-    [0x44, "", "", unimplemented],
-    [0x45, "", "", unimplemented],
-    [0x46, "", "", unimplemented],
-    [0x47, "", "", unimplemented],
+    [0x40, "INC AW", "Increment AW by 1", unimplemented],
+    [0x41, "INC CW", "Increment CW by 1", unimplemented],
+    [0x42, "INC DW", "Increment DW by 1", unimplemented],
+    [0x43, "INC BW", "Increment BW by 1", unimplemented],
+    [0x44, "INC SP", "Increment SP by 1", unimplemented],
+    [0x45, "INC BP", "Increment BP by 1", unimplemented],
+    [0x46, "INC IX", "Increment IX by 1", unimplemented],
+    [0x47, "INC IY", "Increment IY by 1", unimplemented],
     [0x48, "DEC AW", "Decrement AW by 1", dec_aw],
     [0x49, "DEC CW", "Decrement CW by 1", dec_cw],
     [0x4A, "DEC DW", "Decrement DW by 1", dec_dw],
     [0x4B, "DEC BW", "Decrement BW by 1", dec_bw],
-    [0x4C, "", "", unimplemented],
-    [0x4D, "", "", unimplemented],
-    [0x4E, "", "", unimplemented],
-    [0x4F, "", "", unimplemented],
+    [0x4C, "DEC SP", "Decrement SP by 1", unimplemented],
+    [0x4D, "DEC BP", "Decrement BP by 1", unimplemented],
+    [0x4E, "DEC IX", "Decrement IX by 1", unimplemented],
+    [0x4F, "DEC IY", "Decrement IY by 1", unimplemented],
 
     [0x50, "", "", unimplemented],
     [0x51, "", "", unimplemented],
@@ -146,8 +146,8 @@ define_instruction_set! {
     [0x6B, "", "", unimplemented],
     [0x6C, "", "", unimplemented],
     [0x6D, "", "", unimplemented],
-    [0x6E, "OUTM", "8-bit",  unimplemented],
-    [0x6F, "OUTM", "16-bit", unimplemented],
+    [0x6E, "OUTM", "8-bit output from memory at IX",  outm_b],
+    [0x6F, "OUTM", "16-bit output from memory at IX", outm_w],
 
     [0x70, "", "", unimplemented],
     [0x71, "", "", unimplemented],
@@ -321,7 +321,7 @@ fn add_b_f_rm (state: &mut State) -> u64 {
 
 #[inline]
 fn add_w_f_rm (state: &mut State) -> u64 {
-    let addr     = state.read_u8();
+    let addr     = state.next_u8();
     let memory   = (addr & 0b00000111) >> 0;
     let register = (addr & 0b00111000) >> 3;
     let mode     = (addr & 0b11000000) >> 6;
@@ -435,105 +435,105 @@ fn mov_mw_imm (state: &mut State) -> u64 {
 
 #[inline]
 fn mov_al_i (state: &mut State) -> u64 {
-    let byte = state.read_u8();
+    let byte = state.next_u8();
     state.set_al(byte);
     2
 }
 
 #[inline]
 fn mov_bl_i (state: &mut State) -> u64 {
-    let byte = state.read_u8();
+    let byte = state.next_u8();
     state.set_bl(byte);
     2
 }
 
 #[inline]
 fn mov_cl_i (state: &mut State) -> u64 {
-    let byte = state.read_u8();
+    let byte = state.next_u8();
     state.set_cl(byte);
     2
 }
 
 #[inline]
 fn mov_dl_i (state: &mut State) -> u64 {
-    let byte = state.read_u8();
+    let byte = state.next_u8();
     state.set_dl(byte);
     2
 }
 
 #[inline]
 fn mov_ah_i (state: &mut State) -> u64 {
-    let byte = state.read_u8();
+    let byte = state.next_u8();
     state.set_ah(byte);
     2
 }
 
 #[inline]
 fn mov_bh_i (state: &mut State) -> u64 {
-    let byte = state.read_u8();
+    let byte = state.next_u8();
     state.set_bh(byte);
     2
 }
 
 #[inline]
 fn mov_ch_i (state: &mut State) -> u64 {
-    let byte = state.read_u8();
+    let byte = state.next_u8();
     state.set_ch(byte);
     2
 }
 
 #[inline]
 fn mov_dh_i (state: &mut State) -> u64 {
-    let byte = state.read_u8();
+    let byte = state.next_u8();
     state.set_dh(byte);
     2
 }
 
 #[inline]
 fn mov_aw_i (state: &mut State) -> u64 {
-    state.aw = state.read_u16();
+    state.aw = state.next_u16();
     2
 }
 
 #[inline]
 fn mov_bw_i (state: &mut State) -> u64 {
-    state.bw = state.read_u16();
+    state.bw = state.next_u16();
     2
 }
 
 #[inline]
 fn mov_cw_i (state: &mut State) -> u64 {
-    state.cw = state.read_u16();
+    state.cw = state.next_u16();
     2
 }
 
 #[inline]
 fn mov_dw_i (state: &mut State) -> u64 {
-    state.dw = state.read_u16();
+    state.dw = state.next_u16();
     2
 }
 
 #[inline]
 fn mov_sp_i (state: &mut State) -> u64 {
-    state.sp = state.read_u16();
+    state.sp = state.next_u16();
     2
 }
 
 #[inline]
 fn mov_bp_i (state: &mut State) -> u64 {
-    state.bp = state.read_u16();
+    state.bp = state.next_u16();
     2
 }
 
 #[inline]
 fn mov_ix_i (state: &mut State) -> u64 {
-    state.ix = state.read_u16();
+    state.ix = state.next_u16();
     2
 }
 
 #[inline]
 fn mov_iy_i (state: &mut State) -> u64 {
-    state.iy = state.read_u16();
+    state.iy = state.next_u16();
     2
 }
 
@@ -554,7 +554,7 @@ fn mov_ds0_aw (state: &mut State) -> u64 {
 
 #[inline]
 fn in_b (state: &mut State) -> u64 {
-    let addr = state.read_u16();
+    let addr = state.next_u16();
     let data = state.input_u8(addr);
     state.set_al(data);
     5
@@ -562,7 +562,7 @@ fn in_b (state: &mut State) -> u64 {
 
 #[inline]
 fn in_w (state: &mut State) -> u64 {
-    let addr = state.read_u16();
+    let addr = state.next_u16();
     let data = state.input_u16(addr);
     state.aw = data;
     7
@@ -585,8 +585,50 @@ fn in_w_v (state: &mut State) -> u64 {
 }
 
 #[inline]
+/// (DW) ← (IX)
+/// DIR = 0: IX ← IX + 1
+/// DIR = 1: IX ← IX – 1
+/// TODO: rep
+fn outm_b (state: &mut State) -> u64 {
+    let data = state.read_u8(state.ix);
+    state.output_u8(state.dw, data);
+    if state.dir() {
+        state.ix = state.ix - 1;
+    } else {
+        state.ix = state.ix + 1;
+    }
+    let rep = 1; // TODO
+    8 * rep - 2
+}
+
+#[inline]
+/// (DW + 1, DW) ← (IX + 1, IX)
+/// DIR = 0: IX ← IX + 2
+/// DIR = 1: IX ← IX – 2
+/// TODO: rep
+fn outm_w (state: &mut State) -> u64 {
+    let data = state.read_u16(state.ix);
+    state.output_u16(state.dw, data);
+    if state.dir() {
+        state.ix = state.ix - 2;
+    } else {
+        state.ix = state.ix + 2;
+    }
+    let rep = 1; // TODO
+    if (state.dw % 2 == 1) && (state.ix % 2 == 1) {
+        14 * rep - 2
+    } else if state.dw % 2 == 1 {
+        12 * rep - 2
+    } else if state.ix % 2 == 1 {
+        10 * rep - 2
+    } else {
+        8 * rep - 2
+    }
+}
+
+#[inline]
 fn out_b (state: &mut State) -> u64 {
-    let addr = state.read_u16();
+    let addr = state.next_u16();
     let data = state.al();
     state.output_u8(addr, data);
     3
@@ -594,7 +636,7 @@ fn out_b (state: &mut State) -> u64 {
 
 #[inline]
 fn out_w (state: &mut State) -> u64 {
-    let addr = state.read_u16();
+    let addr = state.next_u16();
     let data = state.aw;
     state.output_u16(addr, data);
     5
@@ -642,7 +684,7 @@ fn set1_dir (state: &mut State) -> u64 {
 
 #[inline]
 fn call_d (state: &mut State) -> u64 {
-    let displacement = state.read_i16();
+    let displacement = state.next_i16();
     state.push_u16(state.pc);
     state.pc = ((state.pc as i16) + displacement) as u16;
     match state.pc % 2 {
@@ -655,7 +697,7 @@ fn call_d (state: &mut State) -> u64 {
 #[inline]
 /// PC ← PC + disp
 fn br_near (state: &mut State) -> u64 {
-    let displacement = state.read_i16();
+    let displacement = state.next_i16();
     state.pc = ((state.pc as i16) + displacement) as u16;
     7
 }
@@ -664,8 +706,8 @@ fn br_near (state: &mut State) -> u64 {
 /// PS ← seg
 /// PC ← offset
 fn br_far (state: &mut State) -> u64 {
-    let offset  = state.read_u16();
-    let segment = state.read_u16();
+    let offset  = state.next_u16();
+    let segment = state.next_u16();
     state.pc = offset;
     state.ps = segment;
     7
@@ -682,7 +724,7 @@ fn di (state: &mut State) -> u64 {
 /// CW ← CW – 1
 /// Where CW ≠ 0: PC ← PC + ext-disp8
 fn dbnz (state: &mut State) -> u64 {
-    let displacement = state.read_i8();
+    let displacement = state.next_i8();
     state.cw = state.cw.overflowing_sub(1).0;
     if state.cw > 0 {
         state.pc = ((state.pc as i32) + displacement as i32) as u16;
@@ -718,11 +760,35 @@ fn dec_dw (state: &mut State) -> u64 {
 
 #[inline]
 fn bne (state: &mut State) -> u64 {
-    let displacement = state.read_i8();
+    let displacement = state.next_i8();
     if state.z() {
         state.pc = ((state.pc as i32) + (displacement as i32)) as u16;
         3
     } else {
         6
     }
+}
+
+#[inline]
+fn ds0 (state: &mut State) -> u64 {
+    state.segment = Some(Segment::DS0);
+    2
+}
+
+#[inline]
+fn ds1 (state: &mut State) -> u64 {
+    state.segment = Some(Segment::DS1);
+    2
+}
+
+#[inline]
+fn ps (state: &mut State) -> u64 {
+    state.segment = Some(Segment::PS);
+    2
+}
+
+#[inline]
+fn ss (state: &mut State) -> u64 {
+    state.segment = Some(Segment::PS);
+    2
 }
