@@ -202,36 +202,50 @@ impl State {
         (self.psw & (1 << 11)) > 0
     }
     pub fn v_on (&mut self) {
+        self.psw = self.psw | (1<<11)
     }
     pub fn v_off (&mut self) {
+        self.psw = self.psw & (1<<11)
     }
 
-    pub fn dir (&mut self) {
+    pub fn dir (&mut self) -> bool {
+        (self.psw & (1 << 10)) > 0
     }
     pub fn dir_on (&mut self) {
+        self.psw = self.psw | (1<<10)
     }
     pub fn dir_off (&mut self) {
+        self.psw = self.psw & (1<<10)
     }
 
-    pub fn ie (&mut self) {
+    pub fn ie (&mut self) -> bool {
+        (self.psw & (1 << 9)) > 0
     }
     pub fn ie_on (&mut self) {
+        self.psw = self.psw | (1<<9)
     }
     pub fn ie_off (&mut self) {
+        self.psw = self.psw & (1<<9)
     }
 
-    pub fn brk (&mut self) {
+    pub fn brk (&mut self) -> bool {
+        (self.psw & (1 << 8)) > 0
     }
     pub fn brk_on (&mut self) {
+        self.psw = self.psw | (1<<8)
     }
     pub fn brk_off (&mut self) {
+        self.psw = self.psw & (1<<8)
     }
 
-    pub fn s (&mut self) {
+    pub fn s (&mut self) -> bool {
+        (self.psw & (1 << 7)) > 0
     }
     pub fn s_on (&mut self) {
+        self.psw = self.psw | (1<<7)
     }
     pub fn s_off (&mut self) {
+        self.psw = self.psw & (1<<7)
     }
 
     pub fn z (&mut self) -> bool {
@@ -241,26 +255,36 @@ impl State {
         self.psw = self.psw | (1<<6)
     }
     pub fn z_off (&mut self) {
+        self.psw = self.psw & (1<<6)
     }
 
-    pub fn ac (&mut self) {
+    pub fn ac (&mut self) -> bool {
+        (self.psw & (1 << 4)) > 0
     }
     pub fn ac_on (&mut self) {
+        self.psw = self.psw | (1<<4)
     }
     pub fn ac_off (&mut self) {
+        self.psw = self.psw & (1<<4)
     }
 
-    pub fn p (&mut self) {
+    pub fn p (&mut self) -> bool {
+        (self.psw & (1 << 2)) > 0
     }
     pub fn p_on (&mut self) {
+        self.psw = self.psw | (1<<2)
     }
     pub fn p_off (&mut self) {
+        self.psw = self.psw & !(1<<2)
     }
 
-    pub fn cy (&mut self) {
+    pub fn cy (&mut self) -> bool {
+        (self.psw & (1 << 0)) > 0
     }
     pub fn cy_on (&mut self) {
+        self.psw = self.psw | (1<<0)
     }
     pub fn cy_off (&mut self) {
+        self.psw = self.psw & !(1<<0)
     }
 }
