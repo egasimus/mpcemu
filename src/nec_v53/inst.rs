@@ -1,33 +1,5 @@
+use crate::define_instruction_set;
 use super::{State, Segment};
-
-macro_rules! define_instruction_set (
-
-    ($([$code:literal, $inst:literal, $info:literal, $impl:ident],)+$(,)?) => {
-
-        #[allow(unused)]
-        pub fn get_instruction_name (code: u8) -> &'static str {
-            match code {
-                $($code => $inst),+
-            }
-        }
-
-        #[allow(unused)]
-        pub fn get_instruction_description (code: u8) -> &'static str {
-            match code {
-                $($code => $info),+
-            }
-        }
-
-        #[allow(unused)]
-        pub fn execute_instruction (state: &mut State, code: u8) -> u64 {
-            match code {
-                $($code => $impl(state)),+
-            }
-        }
-
-    }
-
-);
 
 define_instruction_set! {
     [0x00, "ADD", "8-bit add to memory from register",       add_b_f_rm],
@@ -45,7 +17,7 @@ define_instruction_set! {
     [0x0C, "", "", unimplemented],
     [0x0D, "", "", unimplemented],
     [0x0E, "", "", unimplemented],
-    [0x0F, "GROUP3", "See Group 3", unimplemented],
+    [0x0F, "GROUP3", "See Group 3", group3_instruction],
 
     [0x10, "", "", unimplemented],
     [0x11, "", "", unimplemented],
@@ -94,7 +66,7 @@ define_instruction_set! {
     [0x3A, "",     "",                                       unimplemented],
     [0x3B, "",     "",                                       unimplemented],
     [0x3C, "CMP",  "b, ia",                                  unimplemented],
-    [0x3D, "CMP",  "w, ia",                                  unimplemented],
+    [0x3D, "CMP",  "w, ia",                                  cmp_aw_imm],
     [0x3E, "DS0:", "Set segment override to data segment 0", ds0],
     [0x3F, "",     "",                                       unimplemented],
 
@@ -200,8 +172,8 @@ define_instruction_set! {
     [0x9E, "", "", unimplemented],
     [0x9F, "", "", unimplemented],
 
-    [0xA0, "MOV", "Move 8-bit value into AL from memory",  mov_al_m],
-    [0xA1, "MOV", "Move 16-bit value into AW from memory", mov_aw_m],
+    [0xA0, "MOV AL", "Move 8-bit value into AL from memory",  mov_al_m],
+    [0xA1, "MOV AW", "Move 16-bit value into AW from memory", mov_aw_m],
     [0xA2, "MOV", "Move 8-bit value into memory from AL",  mov_m_al],
     [0xA3, "MOV", "Move 16-bit value into memory from AW", mov_m_aw],
     [0xA4, "", "", unimplemented],
@@ -212,27 +184,27 @@ define_instruction_set! {
     [0xA9, "", "", unimplemented],
     [0xAA, "", "", unimplemented],
     [0xAB, "", "", unimplemented],
-    [0xAC, "", "", unimplemented],
-    [0xAD, "", "", unimplemented],
+    [0xAC, "LDM", "b", ldm_b],
+    [0xAD, "LDM", "w", ldm_w],
     [0xAE, "", "", unimplemented],
     [0xAF, "", "", unimplemented],
     
-    [0xB0, "MOV", "Move 8-bit constant into AL",  mov_al_i],
-    [0xB1, "MOV", "Move 8-bit constant into CL",  mov_cl_i],
-    [0xB2, "MOV", "Move 8-bit constant into DL",  mov_dl_i],
-    [0xB3, "MOV", "Move 8-bit constant into BL",  mov_bl_i],
-    [0xB4, "MOV", "Move 8-bit constant into AH",  mov_ah_i],
-    [0xB5, "MOV", "Move 8-bit constant into CH",  mov_ch_i],
-    [0xB6, "MOV", "Move 8-bit constant into BH",  mov_bh_i],
-    [0xB7, "MOV", "Move 8-bit constant into DH",  mov_dh_i],
-    [0xB8, "MOV", "Move 16-bit constant into AW", mov_aw_i],
-    [0xB9, "MOV", "Move 16-bit constant into CW", mov_cw_i],
-    [0xBA, "MOV", "Move 16-bit constant into DW", mov_dw_i],
-    [0xBB, "MOV", "Move 16-bit constant into BW", mov_bw_i],
-    [0xBC, "MOV", "Move 16-bit constant into SP", mov_sp_i],
-    [0xBD, "MOV", "Move 16-bit constant into BP", mov_bp_i],
-    [0xBE, "MOV", "Move 16-bit constant into IX", mov_ix_i],
-    [0xBF, "MOV", "Move 16-bit constant into IY", mov_iy_i],
+    [0xB0, "MOV AL", "Move 8-bit constant into AL",  mov_al_i],
+    [0xB1, "MOV CL", "Move 8-bit constant into CL",  mov_cl_i],
+    [0xB2, "MOV DL", "Move 8-bit constant into DL",  mov_dl_i],
+    [0xB3, "MOV BL", "Move 8-bit constant into BL",  mov_bl_i],
+    [0xB4, "MOV AH", "Move 8-bit constant into AH",  mov_ah_i],
+    [0xB5, "MOV CH", "Move 8-bit constant into CH",  mov_ch_i],
+    [0xB6, "MOV BH", "Move 8-bit constant into BH",  mov_bh_i],
+    [0xB7, "MOV DH", "Move 8-bit constant into DH",  mov_dh_i],
+    [0xB8, "MOV AW", "Move 16-bit constant into AW", mov_aw_i],
+    [0xB9, "MOV CW", "Move 16-bit constant into CW", mov_cw_i],
+    [0xBA, "MOV DW", "Move 16-bit constant into DW", mov_dw_i],
+    [0xBB, "MOV BW", "Move 16-bit constant into BW", mov_bw_i],
+    [0xBC, "MOV SP", "Move 16-bit constant into SP", mov_sp_i],
+    [0xBD, "MOV BP", "Move 16-bit constant into BP", mov_bp_i],
+    [0xBE, "MOV IX", "Move 16-bit constant into IX", mov_ix_i],
+    [0xBF, "MOV IY", "Move 16-bit constant into IY", mov_iy_i],
 
     [0xC0, "",        "", unimplemented],
     [0xC1, "",        "", unimplemented],
@@ -938,6 +910,34 @@ fn bne (state: &mut State) -> u64 {
 }
 
 #[inline]
+fn ldm_b (state: &mut State) -> u64 {
+    let data = state.read_u8(state.ix);
+    state.set_al(data);
+    if state.dir() {
+        state.ix = state.ix - 1;
+    } else {
+        state.ix = state.ix + 1;
+    }
+    5
+}
+
+#[inline]
+fn ldm_w (state: &mut State) -> u64 {
+    let data = state.read_u16(state.ix);
+    state.aw = data;
+    if state.dir() {
+        state.ix = state.ix - 2;
+    } else {
+        state.ix = state.ix + 2;
+    }
+    if state.ix % 2 == 1 {
+        7
+    } else {
+        5
+    }
+}
+
+#[inline]
 fn ds0 (state: &mut State) -> u64 {
     state.segment = Some(Segment::DS0);
     2
@@ -959,4 +959,76 @@ fn ps (state: &mut State) -> u64 {
 fn ss (state: &mut State) -> u64 {
     state.segment = Some(Segment::PS);
     2
+}
+
+#[inline]
+fn cmp_aw_imm (state: &mut State) -> u64 {
+    let value = state.next_u16();
+    let (_, overflow) = state.aw.overflowing_sub(value);
+    unimplemented!();
+    2
+}
+
+#[inline]
+fn group3_instruction (state: &mut State) -> u64 {
+    let opcode = state.next_u8();
+    group3::execute_instruction(state, opcode)
+}
+
+mod group3 {
+    use crate::define_instruction_set;
+    use super::State;
+
+    define_instruction_set! {
+        [0x10, "", "", unimplemented],
+        [0x11, "", "", unimplemented],
+        [0x12, "", "", unimplemented],
+        [0x13, "", "", unimplemented],
+        [0x14, "", "", unimplemented],
+        [0x15, "", "", unimplemented],
+        [0x16, "", "", unimplemented],
+        [0x17, "", "", unimplemented],
+        [0x18, "", "", unimplemented],
+        [0x19, "", "", unimplemented],
+        [0x1A, "", "", unimplemented],
+        [0x1B, "", "", unimplemented],
+        [0x1C, "", "", unimplemented],
+        [0x1D, "", "", unimplemented],
+        [0x1E, "", "", unimplemented],
+        [0x1F, "", "", unimplemented],
+
+        [0x20, "", "", unimplemented],
+        [0x22, "", "", unimplemented],
+        [0x26, "", "", unimplemented],
+        [0x28, "", "", unimplemented],
+        [0x2A, "", "", unimplemented],
+
+        [0x31, "", "", unimplemented],
+        [0x33, "", "", unimplemented],
+        [0x39, "", "", unimplemented],
+        [0x3B, "", "", unimplemented],
+
+        [0xE0, "BRKXA", "Start/break extended addressing mode", brkxa],
+
+        [0xF0, "RETXA", "Exit extended addressing mode", retxa],
+    }
+
+    #[inline]
+    fn unimplemented (state: &mut State) -> u64 {
+        unimplemented!()
+    }
+
+    #[inline]
+    fn brkxa (state: &mut State) -> u64 {
+        let addr = state.next_u8();
+        state.pc = state.read_u16(addr as u16 * 4);
+        state.ps = state.read_u16(addr as u16 * 4 + 2);
+        12
+    }
+
+    #[inline]
+    fn retxa (state: &mut State) -> u64 {
+        unimplemented!();
+        12
+    }
 }

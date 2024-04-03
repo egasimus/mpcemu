@@ -36,3 +36,35 @@ fn main () -> Result<(), Box<dyn std::error::Error>> {
     }
     Ok(())
 }
+
+#[macro_export] macro_rules! define_instruction_set (
+
+    ($([$code:literal, $inst:literal, $info:literal, $impl:ident],)+$(,)?) => {
+
+        #[allow(unused)]
+        pub fn get_instruction_name (code: u8) -> &'static str {
+            match code {
+                $($code => $inst),+,
+                _ => panic!("undefined instruction {}", code),
+            }
+        }
+
+        #[allow(unused)]
+        pub fn get_instruction_description (code: u8) -> &'static str {
+            match code {
+                $($code => $info),+,
+                _ => panic!("undefined instruction {}", code),
+            }
+        }
+
+        #[allow(unused)]
+        pub fn execute_instruction (state: &mut State, code: u8) -> u64 {
+            match code {
+                $($code => $impl(state)),+,
+                _ => panic!("undefined instruction {}", code),
+            }
+        }
+
+    }
+
+);

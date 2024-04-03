@@ -1,9 +1,10 @@
 use super::execute_instruction;
 
 pub struct State {
-    pub clock:   u64,
-    pub memory:  Vec<u8>,
-    pub ports:   Vec<u8>,
+    pub clock:    u64,
+    pub memory:   Vec<u8>,
+    pub ports:    [u8;65536],
+    pub internal: [u8;256],
     /// General purpose register A, whole word
     /// Default for:
     /// - Word multiplication/division
@@ -40,24 +41,25 @@ pub struct State {
 impl State {
     pub fn new () -> Self {
         Self {
-            clock:   0x0000,
-            memory:  vec![0x00;65536],
-            ports:   vec![0x00;65536],
-            aw:      0x0000,
-            bw:      0x0000,
-            cw:      0x0000,
-            dw:      0x0000,
-            ps:      0xffff,
-            ss:      0x0000,
-            ds0:     0x0000,
-            ds1:     0x0000,
-            sp:      0x0000,
-            bp:      0x0000,
-            pc:      0x0000,
-            psw:     0b1111000000000010,
-            ix:      0x0000,
-            iy:      0x0000,
-            segment: None,
+            clock:    0x0000,
+            memory:   vec![0x00;65536],
+            ports:    [0x00;65536],
+            internal: [0x00;256],
+            aw:       0x0000,
+            bw:       0x0000,
+            cw:       0x0000,
+            dw:       0x0000,
+            ps:       0xffff,
+            ss:       0x0000,
+            ds0:      0x0000,
+            ds1:      0x0000,
+            sp:       0x0000,
+            bp:       0x0000,
+            pc:       0x0000,
+            psw:      0b1111000000000010,
+            ix:       0x0000,
+            iy:       0x0000,
+            segment:  None,
         }
     }
     /// Read and execute the next instruction in the program
