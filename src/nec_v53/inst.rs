@@ -1,5 +1,10 @@
 use crate::define_instruction_set;
-use super::{CPU, Segment, to_source_register_value, to_target_register_reference};
+use super::{
+    CPU,
+    Segment,
+    to_source_register_value,
+    to_target_register_reference,
+};
 
 define_instruction_set! {
     [0x00, "ADD",    "Add byte to memory from register",      add_b_f_rm],
@@ -463,7 +468,8 @@ fn mov_dh_i (state: &mut CPU) -> u64 {
 
 #[inline]
 fn mov_aw_i (state: &mut CPU) -> u64 {
-    state.aw = state.next_u16();
+    let value = state.next_u16();
+    state.set_aw(value);
     2
 }
 
@@ -763,7 +769,7 @@ fn dbnz (state: &mut CPU) -> u64 {
 #[inline]
 fn inc_aw (state: &mut CPU) -> u64 {
     let (value, overflow) = state.aw.overflowing_add(1);
-    state.aw = value;
+    state.set_aw(value);
     state.set_cy(overflow);
     2
 }
@@ -771,7 +777,7 @@ fn inc_aw (state: &mut CPU) -> u64 {
 #[inline]
 fn inc_bw (state: &mut CPU) -> u64 {
     let (value, overflow) = state.bw.overflowing_add(1);
-    state.bw = value;
+    state.set_bw(value);
     state.set_cy(overflow);
     2
 }
@@ -779,7 +785,7 @@ fn inc_bw (state: &mut CPU) -> u64 {
 #[inline]
 fn inc_cw (state: &mut CPU) -> u64 {
     let (value, overflow) = state.cw.overflowing_add(1);
-    state.cw = value;
+    state.set_cw(value);
     state.set_cy(overflow);
     2
 }
@@ -787,7 +793,7 @@ fn inc_cw (state: &mut CPU) -> u64 {
 #[inline]
 fn inc_dw (state: &mut CPU) -> u64 {
     let (value, overflow) = state.dw.overflowing_add(1);
-    state.dw = value;
+    state.set_dw(value);
     state.set_cy(overflow);
     2
 }
@@ -795,7 +801,7 @@ fn inc_dw (state: &mut CPU) -> u64 {
 #[inline]
 fn inc_sp (state: &mut CPU) -> u64 {
     let (value, overflow) = state.sp.overflowing_add(1);
-    state.sp = value;
+    state.set_sp(value);
     state.set_cy(overflow);
     2
 }
@@ -803,7 +809,7 @@ fn inc_sp (state: &mut CPU) -> u64 {
 #[inline]
 fn inc_bp (state: &mut CPU) -> u64 {
     let (value, overflow) = state.bp.overflowing_add(1);
-    state.bp = value;
+    state.set_bp(value);
     state.set_cy(overflow);
     2
 }
@@ -811,7 +817,7 @@ fn inc_bp (state: &mut CPU) -> u64 {
 #[inline]
 fn inc_ix (state: &mut CPU) -> u64 {
     let (value, overflow) = state.ix.overflowing_add(1);
-    state.ix = value;
+    state.set_ix(value);
     state.set_cy(overflow);
     2
 }
@@ -819,7 +825,7 @@ fn inc_ix (state: &mut CPU) -> u64 {
 #[inline]
 fn inc_iy (state: &mut CPU) -> u64 {
     let (value, overflow) = state.ix.overflowing_add(1);
-    state.ix = value;
+    state.set_iy(value);
     state.set_cy(overflow);
     2
 }
@@ -965,18 +971,11 @@ fn ss (state: &mut CPU) -> u64 {
 #[inline]
 fn cmp_aw_imm (state: &mut CPU) -> u64 {
     let value = state.next_u16();
-    let (result, overflow) = state.aw.overflowing_sub(value);
-    let mut ones = 0;
-    for i in 0..8 {
-        let s = result >> i;
-        if s % 2 == 1 {
-            ones += 1;
-        }
-    }
-    state.set_p(ones % 2 == 0);
-    state.set_z(result == 0);
-    state.set_s(result >> 15 == 1);
-    state.set_cy(overflow);
+    let (result, unsigned_overflow) = state.aw.overflowing_sub(value);
+    let (_, signed_overflow) = (state.aw as i16).overflowing_sub(value as i16);
+    state.set_pzs(result);
+    state.set_cy(unsigned_overflow);
+    state.set_v(signed_overflow);
     2
 }
 

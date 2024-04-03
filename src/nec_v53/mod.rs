@@ -6,44 +6,32 @@ mod inst;
 mod mem;
 #[cfg(test)] mod test;
 
-pub use self::mem::Segment;
-pub use self::{inst::*, reg::*};
+pub use self::{
+    reg::*,
+    flag::*,
+    inst::*,
+    mem::*,
+};
 
 pub struct CPU {
     pub clock:    u64,
     pub memory:   Vec<u8>,
     pub ports:    [u8;65536],
     pub internal: [u8;256],
-    /// General purpose register A, whole word
-    /// Default for:
-    /// - Word multiplication/division
-    /// - Word input/output
-    /// - Data exchange
-    pub aw:      u16,
-    /// General purpose register B, whole word
-    /// Default for:
-    /// - Data exchange (table reference)
-    pub bw:      u16,
-    /// General purpose register C, whole word
-    /// Default for:
-    /// - Loop control branch
-    /// - Repeat prefix
-    pub cw:      u16,
-    /// General purpose register D, whole word
-    /// Default for:
-    /// - Word multiplication/division
-    /// - Indirect addressing input/output
-    pub dw:      u16,
-    pub ps:      u16,
-    pub ss:      u16,
-    pub ds0:     u16,
-    pub ds1:     u16,
-    pub sp:      u16,
-    pub bp:      u16,
-    pub pc:      u16,
-    pub psw:     u16,
-    pub ix:      u16,
-    pub iy:      u16,
+    aw:  u16,
+    bw:  u16,
+    cw:  u16,
+    dw:  u16,
+    ps:  u16,
+    ss:  u16,
+    ds0: u16,
+    ds1: u16,
+    sp:  u16,
+    bp:  u16,
+    pc:  u16,
+    psw: u16,
+    ix:  u16,
+    iy:  u16,
     pub segment: Option<Segment>,
 }
 
@@ -82,4 +70,5 @@ impl CPU {
             self.segment = None
         }
     }
+
 }

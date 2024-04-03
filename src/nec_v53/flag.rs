@@ -65,3 +65,24 @@ define_flag! {
     /// Carry flag. Set when there is an unsigned overflow, otherwise reset.
     cy set_cy 0
 }
+
+/// Flag utilities.
+impl CPU {
+    /// Set parity, zero, and sign flags from word result.
+    pub fn set_pzs (&mut self, result: u16) {
+        self.set_p(determine_parity(result as u8));
+        self.set_z(result == 0);
+        self.set_s(result >> 15 == 1);
+    }
+}
+
+fn determine_parity (result: u8) -> bool {
+    let mut ones = 0;
+    for i in 0..8 {
+        let s = result >> i;
+        if s % 2 == 1 {
+            ones += 1;
+        }
+    }
+    ones % 2 == 0
+}

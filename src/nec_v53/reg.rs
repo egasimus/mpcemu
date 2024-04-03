@@ -1,76 +1,110 @@
 use super::CPU;
 
-impl CPU {
-    /// General purpose register A, high byte
-    /// Default for:
-    /// - Byte multiplication/division
-    pub fn ah (&self) -> u8 {
-        (self.aw >> 8) as u8
-    }
-    /// General purpose register B, high byte
-    pub fn bh (&self) -> u8 {
-        (self.bw >> 8) as u8
-    }
-    /// General purpose register C, high byte
-    pub fn ch (&self) -> u8 {
-        (self.cw >> 8) as u8
-    }
-    /// General purpose register D, high byte
-    pub fn dh (&self) -> u8 {
-        (self.dw >> 8) as u8
-    }
-
-    /// General purpose register A, low byte
-    /// - Byte multiplication/division
-    /// - Byte input/output
-    /// - BCD rotate
-    /// - Data exchange
-    pub fn al (&self) -> u8 {
-        (self.aw & 0xff) as u8
-    }
-    /// General purpose register B, low byte
-    pub fn bl (&self) -> u8 {
-        (self.bw & 0xff) as u8
-    }
-    /// General purpose register C, low byte
-    /// Default for:
-    /// - Shift instructions
-    /// - Rotate instructions
-    /// - BCD operation
-    pub fn cl (&self) -> u8 {
-        (self.cw & 0xff) as u8
-    }
-    /// General purpose register D, low byte
-    pub fn dl (&self) -> u8 {
-        (self.dw & 0xff) as u8
-    }
-
-    pub fn set_ah (&mut self, value: u8) {
-        self.aw = self.aw | ((value as u16) << 8);
-    }
-    pub fn set_bh (&mut self, value: u8) {
-        self.bw = self.bw | ((value as u16) << 8);
-    }
-    pub fn set_ch (&mut self, value: u8) {
-        self.cw = self.cw | ((value as u16) << 8);
-    }
-    pub fn set_dh (&mut self, value: u8) {
-        self.dw = self.dw | ((value as u16) << 8);
-    }
-
-    pub fn set_al (&mut self, value: u8) {
-        self.aw = self.aw | value as u16;
-    }
-    pub fn set_bl (&mut self, value: u8) {
-        self.bw = self.bw | value as u16;
-    }
-    pub fn set_cl (&mut self, value: u8) {
-        self.cw = self.cw | value as u16;
-    }
-    pub fn set_dl (&mut self, value: u8) {
-        self.dw = self.dw | value as u16;
+macro_rules! define_general_purpose_register {
+    (
+        $(#[$attr:meta])*
+        $w:ident $w_set:ident
+        $h:ident $h_set:ident
+        $l:ident $l_set:ident
+    ) => {
+        $(#[$attr])*
+        impl CPU {
+            pub fn $w (&self) -> u16 {
+                self.$w
+            }
+            pub fn $w_set (&mut self, value: u16) {
+                self.$w = value;
+            }
+            pub fn $h (&self) -> u8 {
+                (self.$w >> 8) as u8
+            }
+            pub fn $h_set (&mut self, value: u8) {
+                self.$w = self.$w | ((value as u16) << 8);
+            }
+            pub fn $l (&self) -> u8 {
+                (self.$w & 0xff) as u8
+            }
+            pub fn $l_set (&mut self, value: u8) {
+                self.$w = self.$w | value as u16;
+            }
+        }
     }
 }
+
+define_general_purpose_register!(
+    /// General purpose register A
+    ///
+    /// - AW is default for:
+    ///   - Word multiplication/division
+    ///   - Word input/output
+    ///   - Data exchange
+    /// - AH is default for:
+    ///   - Byte multiplication/division
+    /// - AL is default for:
+    ///   - Byte multiplication/division
+    ///   - Byte input/output
+    ///   - BCD rotate
+    ///   - Data exchange
+    aw set_aw ah set_ah al set_al
+);
+
+define_general_purpose_register!(
+    /// General purpose register B
+    ///
+    /// - BW is default for:
+    ///   - Data exchange (table reference)
+    bw set_bw bh set_bh bl set_bl
+);
+
+define_general_purpose_register!(
+    /// General purpose register C
+    ///
+    /// - CW is default for:
+    ///   - Loop control branch
+    ///   - Repeat prefix
+    /// - CL is default for:
+    ///   - Shift instructions
+    ///   - Rotate instructions
+    ///   - BCD operation
+    cw set_cw ch set_ch cl set_cl
+);
+
+define_general_purpose_register!(
+    /// General purpose register D
+    ///
+    /// - DW is default for:
+    ///   - Word multiplication/division
+    ///   - Indirect addressing input/output
+    dw set_dw dh set_dh dl set_dl
+);
+
+macro_rules! define_special_register {
+    (
+        $(#[$attr:meta])*
+        $w:ident $w_set:ident
+    ) => {
+        $(#[$attr])*
+        impl CPU {
+            pub fn $w (&self) -> u16 {
+                self.$w
+            }
+            pub fn $w_set (&mut self, value: u16) {
+                self.$w = value;
+            }
+        }
+    }
+}
+
+define_special_register!(ps  set_ps);
+define_special_register!(ss  set_ss);
+define_special_register!(ds0 set_ds0);
+define_special_register!(ds1 set_ds1);
+define_special_register!(sp  set_sp);
+define_special_register!(bp  set_bp);
+define_special_register!(pc  set_pc);
+define_special_register!(psw set_psw);
+define_special_register!(ix  set_ix);
+define_special_register!(iy  set_iy);
 
 pub fn to_source_register_value (state: &CPU, arg: u8) -> u16 {
     match (arg & 0b00111000) >> 3 {

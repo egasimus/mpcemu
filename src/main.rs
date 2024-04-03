@@ -27,7 +27,7 @@ fn main () -> Result<(), Box<dyn std::error::Error>> {
         )
     }
     loop {
-        let segment = cpu.ps as u32 * 0x10;
+        //let segment = cpu.ps() as u32 * 0x10;
         let address = cpu.address();
         let opcode  = cpu.memory[address];
         //println!("0x{:x} + 0x{:x} = 0x{:x}", segment, cpu.pc, segment + cpu.pc as u32);
