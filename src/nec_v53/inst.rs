@@ -152,7 +152,7 @@ define_instruction_set! {
     [0x8B, "MOV",  "Move word to register from memory", mov_w_to_reg],
     [0x8C, "MOV",  "from sreg, rm",                     unimplemented],
     [0x8D, "LDEA", "",                                  unimplemented],
-    [0x8E, "MOV",  "to sreg, rm",                       unimplemented],
+    [0x8E, "MOV",  "to sreg, rm",                       mov_w_to_sreg],
     [0x8F, "POP",  "rm",                                unimplemented],
 
     [0x90, "NOP",         "Do nothing",        nop],
@@ -490,7 +490,32 @@ fn cmp_aw_imm (state: &mut CPU) -> u64 {
 
 #[inline]
 fn sub_w_t_rm (state: &mut CPU) -> u64 {
-    unimplemented!();
+    let arg  = state.next_u8();
+    let mode = (arg & 0b11000000) >> 6;
+    if mode == 0b11 {
+        let src = to_source_register_value(state, arg);
+        let dst = to_target_register_reference(state, arg);
+        let (result, unsigned_overflow) = (*dst).overflowing_sub(src);
+        let (_, signed_overflow) = (*dst as i16).overflowing_sub(src as i16);
+        *dst = result;
+        state.set_pzs(result);
+        state.set_cy(unsigned_overflow);
+        state.set_v(signed_overflow);
+        2
+    } else {
+        let value = state.next_u16();
+        let memory = arg & 0b00000111;
+        if mode == 0b01 {
+            unimplemented!();
+        } else if mode == 0b10 {
+            unimplemented!();
+        } else if mode == 0b00 {
+            unimplemented!();
+        } else {
+            unreachable!();
+        }
+        unimplemented!();
+    }
 }
 
 #[inline]

@@ -127,7 +127,7 @@ pub fn ps (state: &mut CPU) -> u64 {
 
 #[inline]
 pub fn ss (state: &mut CPU) -> u64 {
-    state.segment = Some(Segment::PS);
+    state.segment = Some(Segment::SS);
     2
 }
 
@@ -268,13 +268,69 @@ pub fn mov_mw_imm (state: &mut CPU) -> u64 {
 }
 
 #[inline]
+/// Move word to register
 pub fn mov_w_to_reg (state: &mut CPU) -> u64 {
-    let arg   = state.next_u8();
-    let mode  = (arg & 0b11000000) >> 6;
+    let arg  = state.next_u8();
+    let mode = (arg & 0b11000000) >> 6;
     if mode == 0b11 {
-        let value = to_source_register_value(state, arg & 0b00000111);
-        let target = to_target_register_reference(state, (arg & 0b00111000) >> 3);
-        *target = value;
+        let src = to_source_register_value(state, arg);
+        let dst = to_target_register_reference(state, arg);
+        *dst = src;
+        2
+    } else {
+        let value = state.next_u16();
+        let memory = arg & 0b00000111;
+        if mode == 0b01 {
+            match memory {
+                0b000 => unimplemented!(),
+                0b001 => unimplemented!(),
+                0b010 => unimplemented!(),
+                0b011 => unimplemented!(),
+                0b100 => unimplemented!(),
+                0b101 => unimplemented!(),
+                0b110 => unimplemented!(),
+                0b111 => unimplemented!(),
+                _ => unreachable!(),
+            }
+        } else if mode == 0b10 {
+            match memory {
+                0b000 => unimplemented!(),
+                0b001 => unimplemented!(),
+                0b010 => unimplemented!(),
+                0b011 => unimplemented!(),
+                0b100 => unimplemented!(),
+                0b101 => unimplemented!(),
+                0b110 => unimplemented!(),
+                0b111 => unimplemented!(),
+                _ => unreachable!(),
+            }
+        } else if mode == 0b00 {
+            match memory {
+                0b000 => unimplemented!(),
+                0b001 => unimplemented!(),
+                0b010 => unimplemented!(),
+                0b011 => unimplemented!(),
+                0b100 => unimplemented!(),
+                0b101 => unimplemented!(),
+                0b110 => unimplemented!(),
+                0b111 => unimplemented!(),
+                _ => unreachable!(),
+            }
+        } else {
+            unreachable!();
+        }
+    }
+}
+
+#[inline]
+/// Move word to segment register
+pub fn mov_w_to_sreg (state: &mut CPU) -> u64 {
+    let arg  = state.next_u8();
+    let mode = (arg & 0b11000000) >> 6;
+    if mode == 0b11 {
+        let src = to_source_register_value(state, arg);
+        let dst = to_target_segment_register_reference(state, arg);
+        *dst = src;
         2
     } else {
         let value = state.next_u16();
