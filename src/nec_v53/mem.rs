@@ -1,4 +1,4 @@
-use super::CPU;
+use super::*;
 
 /// Segment override
 pub enum Segment {
@@ -105,4 +105,233 @@ impl CPU {
         let hi = self.pop_u8() as u16;
         hi << 8 | lo
     }
+}
+
+#[inline]
+pub fn ds0 (state: &mut CPU) -> u64 {
+    state.segment = Some(Segment::DS0);
+    2
+}
+
+#[inline]
+pub fn ds1 (state: &mut CPU) -> u64 {
+    state.segment = Some(Segment::DS1);
+    2
+}
+
+#[inline]
+pub fn ps (state: &mut CPU) -> u64 {
+    state.segment = Some(Segment::PS);
+    2
+}
+
+#[inline]
+pub fn ss (state: &mut CPU) -> u64 {
+    state.segment = Some(Segment::PS);
+    2
+}
+
+#[inline]
+pub fn in_b (state: &mut CPU) -> u64 {
+    let addr = state.next_u16();
+    let data = state.input_u8(addr);
+    state.set_al(data);
+    5
+}
+
+#[inline]
+pub fn in_w (state: &mut CPU) -> u64 {
+    let addr = state.next_u16();
+    let data = state.input_u16(addr);
+    state.aw = data;
+    7
+}
+
+#[inline]
+pub fn in_b_v (state: &mut CPU) -> u64 {
+    let addr = state.dw;
+    let data = state.input_u8(addr);
+    state.set_al(data);
+    5
+}
+
+#[inline]
+pub fn in_w_v (state: &mut CPU) -> u64 {
+    let addr = state.dw;
+    let data = state.input_u16(addr);
+    state.aw = data;
+    7
+}
+
+#[inline]
+/// (DW) ← (IX)
+/// DIR = 0: IX ← IX + 1
+/// DIR = 1: IX ← IX – 1
+/// TODO: rep
+pub fn outm_b (state: &mut CPU) -> u64 {
+    let data = state.read_u8(state.ix);
+    state.output_u8(state.dw, data);
+    if state.dir() {
+        state.ix = state.ix - 1;
+    } else {
+        state.ix = state.ix + 1;
+    }
+    let rep = 1; // TODO
+    8 * rep - 2
+}
+
+#[inline]
+/// (DW + 1, DW) ← (IX + 1, IX)
+/// DIR = 0: IX ← IX + 2
+/// DIR = 1: IX ← IX – 2
+/// TODO: rep
+pub fn outm_w (state: &mut CPU) -> u64 {
+    let data = state.read_u16(state.ix);
+    state.output_u16(state.dw, data);
+    if state.dir() {
+        state.ix = state.ix - 2;
+    } else {
+        state.ix = state.ix + 2;
+    }
+    let rep = 1; // TODO
+    if (state.dw % 2 == 1) && (state.ix % 2 == 1) {
+        14 * rep - 2
+    } else if state.dw % 2 == 1 {
+        12 * rep - 2
+    } else if state.ix % 2 == 1 {
+        10 * rep - 2
+    } else {
+        8 * rep - 2
+    }
+}
+
+#[inline]
+pub fn out_b (state: &mut CPU) -> u64 {
+    let addr = state.next_u16();
+    let data = state.al();
+    state.output_u8(addr, data);
+    3
+}
+
+#[inline]
+pub fn out_w (state: &mut CPU) -> u64 {
+    let addr = state.next_u16();
+    let data = state.aw;
+    state.output_u16(addr, data);
+    5
+}
+
+#[inline]
+pub fn out_b_v (state: &mut CPU) -> u64 {
+    let addr = state.dw;
+    let data = state.al();
+    state.output_u8(addr, data);
+    3
+}
+
+#[inline]
+pub fn out_w_v (state: &mut CPU) -> u64 {
+    let addr = state.dw;
+    let data = state.aw;
+    state.output_u16(addr, data);
+    5
+}
+
+#[inline]
+pub fn mov_al_m (state: &mut CPU) -> u64 {
+    unimplemented!()
+}
+
+#[inline]
+pub fn mov_aw_m (state: &mut CPU) -> u64 {
+    unimplemented!()
+}
+
+#[inline]
+pub fn mov_m_al (state: &mut CPU) -> u64 {
+    unimplemented!()
+}
+
+#[inline]
+pub fn mov_m_aw (state: &mut CPU) -> u64 {
+    unimplemented!()
+}
+
+#[inline]
+pub fn mov_mb_imm (state: &mut CPU) -> u64 {
+    unimplemented!()
+}
+
+#[inline]
+pub fn mov_mw_imm (state: &mut CPU) -> u64 {
+    unimplemented!()
+}
+
+#[inline]
+pub fn mov_w_to_reg (state: &mut CPU) -> u64 {
+    let arg   = state.next_u8();
+    let mode  = (arg & 0b11000000) >> 6;
+    if mode == 0b11 {
+        let value = to_source_register_value(state, arg & 0b00000111);
+        let target = to_target_register_reference(state, (arg & 0b00111000) >> 3);
+        *target = value;
+        2
+    } else {
+        let value = state.next_u16();
+        let memory = arg & 0b00000111;
+        if mode == 0b01 {
+            match memory {
+                0b000 => unimplemented!(),
+                0b001 => unimplemented!(),
+                0b010 => unimplemented!(),
+                0b011 => unimplemented!(),
+                0b100 => unimplemented!(),
+                0b101 => unimplemented!(),
+                0b110 => unimplemented!(),
+                0b111 => unimplemented!(),
+                _ => unreachable!(),
+            }
+        } else if mode == 0b10 {
+            match memory {
+                0b000 => unimplemented!(),
+                0b001 => unimplemented!(),
+                0b010 => unimplemented!(),
+                0b011 => unimplemented!(),
+                0b100 => unimplemented!(),
+                0b101 => unimplemented!(),
+                0b110 => unimplemented!(),
+                0b111 => unimplemented!(),
+                _ => unreachable!(),
+            }
+        } else if mode == 0b00 {
+            match memory {
+                0b000 => unimplemented!(),
+                0b001 => unimplemented!(),
+                0b010 => unimplemented!(),
+                0b011 => unimplemented!(),
+                0b100 => unimplemented!(),
+                0b101 => unimplemented!(),
+                0b110 => unimplemented!(),
+                0b111 => unimplemented!(),
+                _ => unreachable!(),
+            }
+        } else {
+            unreachable!();
+        }
+    }
+}
+
+#[inline]
+pub fn mov_ds1_aw (state: &mut CPU) -> u64 {
+    state.ds1 = state.aw;
+    match state.aw % 2 {
+        0 => 10,
+        1 => 14,
+        _ => unreachable!()
+    }
+}
+
+#[inline]
+pub fn mov_ds0_aw (state: &mut CPU) -> u64 {
+    unimplemented!()
 }
