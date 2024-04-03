@@ -268,13 +268,28 @@ pub fn mov_mw_imm (state: &mut CPU) -> u64 {
 }
 
 #[inline]
+/// Move word from register
+pub fn mov_w_from_reg_to_mem (state: &mut CPU) -> u64 {
+    let target   = state.next_u8();
+    let address  = memory_address(state, (target & 0b11000000) >> 6, target & 0b00000111);
+    let value    = word_register_value(state, (target & 0b00111000) >> 3);
+    state.memory[address as usize + 0] = value as u8;
+    state.memory[address as usize + 1] = (value >> 8) as u8;
+    if address % 2 == 0 {
+        3
+    } else {
+        5
+    }
+}
+
+#[inline]
 /// Move word to register
 pub fn mov_w_to_reg (state: &mut CPU) -> u64 {
     let arg  = state.next_u8();
     let mode = (arg & 0b11000000) >> 6;
     if mode == 0b11 {
-        let src = to_source_register_value(state, arg);
-        let dst = to_target_register_reference(state, arg);
+        let src = word_register_value(state, arg & 0b00000111);
+        let dst = word_register_reference(state, (arg >> 3) & 0b0000111);
         *dst = src;
         2
     } else {
@@ -323,13 +338,34 @@ pub fn mov_w_to_reg (state: &mut CPU) -> u64 {
 }
 
 #[inline]
+pub fn mov_w_from_sreg (state: &mut CPU) -> u64 {
+    let arg   = state.next_u8();
+    let mode  = (arg & 0b11000000) >> 6;
+    let value = segment_register_value(state, (arg >> 3) & 0b00000011);
+    if mode == 0b11 {
+        let dst = word_register_reference(state, arg & 0b00000111);
+        *dst = value;
+        2
+    } else {
+        let address = memory_address(state, mode, arg & 0b00000111);
+        state.memory[address as usize + 0] = value as u8;
+        state.memory[address as usize + 1] = (value >> 8) as u8;
+        if address % 2 == 0 {
+            3
+        } else {
+            5
+        }
+    }
+}
+
+#[inline]
 /// Move word to segment register
 pub fn mov_w_to_sreg (state: &mut CPU) -> u64 {
     let arg  = state.next_u8();
     let mode = (arg & 0b11000000) >> 6;
     if mode == 0b11 {
-        let src = to_source_register_value(state, arg);
-        let dst = to_target_segment_register_reference(state, arg);
+        let src = word_register_value(state, arg & 0b00000111);
+        let dst = segment_register_reference(state, (arg >> 3) & 0b00000011);
         *dst = src;
         2
     } else {
@@ -390,4 +426,67 @@ pub fn mov_ds1_aw (state: &mut CPU) -> u64 {
 #[inline]
 pub fn mov_ds0_aw (state: &mut CPU) -> u64 {
     unimplemented!()
+}
+
+#[inline]
+pub fn stm_w (state: &mut CPU) -> u64 {
+    let iy = state.iy();
+    state.memory[iy as usize] = state.al();
+    state.memory[iy as usize + 1] = state.ah();
+    state.set_iy(if state.dir() {
+        iy.overflowing_sub(2).0
+    } else {
+        iy.overflowing_add(2).0
+    });
+    if iy % 2 == 0 {
+        5
+    } else {
+        3
+    }
+}
+
+#[inline]
+pub fn memory_address (state: &mut CPU, mode: u8, mem: u8) -> u16 {
+    match mode {
+        0b00 => match mem {
+            0b000 => state.bw() + state.ix(),
+            0b001 => state.bw() + state.iy(),
+            0b010 => state.bp() + state.ix(),
+            0b011 => state.bp() + state.iy(),
+            0b100 => state.ix(),
+            0b101 => state.iy(),
+            0b110 => unimplemented!("direct address"),
+            0b111 => state.bw(),
+            _ => panic!("invalid memory inner mode {:b}", mem)
+        },
+        0b01 => {
+            let displace = state.next_u8() as u16;
+            match mem {
+                0b000 => state.bw() + state.ix() + displace,
+                0b001 => state.bw() + state.iy() + displace,
+                0b010 => state.bp() + state.ix() + displace,
+                0b011 => state.bp() + state.iy() + displace,
+                0b100 => state.ix() + displace,
+                0b101 => state.iy() + displace,
+                0b110 => state.bp() + displace,
+                0b111 => state.bw() + displace,
+                _ => panic!("invalid memory inner mode {:b}", mem)
+            }
+        },
+        0b10 => {
+            let displace = state.next_u16();
+            match mem {
+                0b000 => state.bw() + state.ix() + displace,
+                0b001 => state.bw() + state.iy() + displace,
+                0b010 => state.bp() + state.ix() + displace,
+                0b011 => state.bp() + state.iy() + displace,
+                0b100 => state.ix() + displace,
+                0b101 => state.iy() + displace,
+                0b110 => state.bp() + displace,
+                0b111 => state.bw() + displace,
+                _ => panic!("invalid memory inner mode {:b}", mem)
+            }
+        },
+        _ => panic!("invalid memory outer mode {:b}", mode)
+    }
 }

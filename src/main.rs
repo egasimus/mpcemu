@@ -5,34 +5,27 @@ fn main () -> Result<(), Box<dyn std::error::Error>> {
     cpu.memory = vec![];
     cpu.memory.extend_from_slice(&bin);
     cpu.memory.extend_from_slice(&bin);
-    for i in 0..0x8000 {
-        println!(
-            "{:2x} {:2x} {:2x} {:2x} {:2x} {:2x} {:2x} {:2x} {:2x} {:2x} {:2x} {:2x} {:2x} {:2x} {:2x} {:2x}",
-            cpu.memory[i * 0x10 + 0],
-            cpu.memory[i * 0x10 + 1],
-            cpu.memory[i * 0x10 + 2],
-            cpu.memory[i * 0x10 + 3],
-            cpu.memory[i * 0x10 + 4],
-            cpu.memory[i * 0x10 + 5],
-            cpu.memory[i * 0x10 + 6],
-            cpu.memory[i * 0x10 + 7],
-            cpu.memory[i * 0x10 + 8],
-            cpu.memory[i * 0x10 + 9],
-            cpu.memory[i * 0x10 + 10],
-            cpu.memory[i * 0x10 + 11],
-            cpu.memory[i * 0x10 + 12],
-            cpu.memory[i * 0x10 + 13],
-            cpu.memory[i * 0x10 + 14],
-            cpu.memory[i * 0x10 + 15],
-        )
+    for i in 0..0x4000 {
+        print!("\n {:8x}", i * 0x20);
+        for j in 0..32 {
+            print!(" {:2x}", cpu.memory[i * 0x20 + j]);
+        }
     }
+    let mut last_address: usize = 0;
+    let mut last_opcode:  u8    = 0;
     loop {
         //let segment = cpu.ps() as u32 * 0x10;
         let address = cpu.address();
         let opcode  = cpu.memory[address];
         //println!("0x{:x} + 0x{:x} = 0x{:x}", segment, cpu.pc, segment + cpu.pc as u32);
-        println!("{address:x} {opcode:x} {}", nec_v53::get_instruction_name(opcode));
+        if last_address != address {
+            print!("\n{address:x} {opcode:x} {}", nec_v53::get_instruction_name(opcode));
+        } else {
+            print!(".")
+        }
         cpu.step();
+        last_address = address;
+        last_opcode  = opcode;
     }
     Ok(())
 }

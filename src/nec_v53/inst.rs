@@ -138,22 +138,22 @@ define_instruction_set! {
     [0x7E, "BLE", "", unimplemented],
     [0x7F, "BGT", "", unimplemented],
 
-    [0x80, "IMM",  "",                                  unimplemented],
-    [0x81, "IMM",  "",                                  unimplemented],
-    [0x82, "IMM",  "",                                  unimplemented],
-    [0x83, "IMM",  "",                                  unimplemented],
-    [0x84, "TEST", "",                                  unimplemented],
-    [0x85, "TEST", "",                                  unimplemented],
-    [0x86, "XCH",  "",                                  unimplemented],
-    [0x87, "XCH",  "",                                  unimplemented],
-    [0x88, "MOV",  "Move byte to memory from register", unimplemented],
-    [0x89, "MOV",  "Move word to memory from register", unimplemented],
-    [0x8A, "MOV",  "Move byte to register from memory", unimplemented],
-    [0x8B, "MOV",  "Move word to register from memory", mov_w_to_reg],
-    [0x8C, "MOV",  "from sreg, rm",                     unimplemented],
-    [0x8D, "LDEA", "",                                  unimplemented],
-    [0x8E, "MOV",  "to sreg, rm",                       mov_w_to_sreg],
-    [0x8F, "POP",  "rm",                                unimplemented],
+    [0x80, "IMM",  "",                                          unimplemented],
+    [0x81, "IMM",  "",                                          unimplemented],
+    [0x82, "IMM",  "",                                          unimplemented],
+    [0x83, "IMM",  "",                                          unimplemented],
+    [0x84, "TEST", "",                                          unimplemented],
+    [0x85, "TEST", "",                                          unimplemented],
+    [0x86, "XCH",  "",                                          unimplemented],
+    [0x87, "XCH",  "",                                          unimplemented],
+    [0x88, "MOV",  "Move byte to memory from register",         unimplemented],
+    [0x89, "MOV",  "Move word to memory from register",         mov_w_from_reg_to_mem],
+    [0x8A, "MOV",  "Move byte to register from memory",         unimplemented],
+    [0x8B, "MOV",  "Move word to register from memory",         mov_w_to_reg],
+    [0x8C, "MOV",  "from sreg, rm",                             mov_w_from_sreg],
+    [0x8D, "LDEA", "",                                          unimplemented],
+    [0x8E, "MOV",  "Move word to segment register from memory", mov_w_to_sreg],
+    [0x8F, "POP",  "rm",                                        unimplemented],
 
     [0x90, "NOP",         "Do nothing",        nop],
     [0x91, "XCH CW",      "",                  unimplemented],
@@ -182,8 +182,8 @@ define_instruction_set! {
     [0xA7, "CMPBK",  "",                              unimplemented],
     [0xA8, "TEST",   "",                              unimplemented],
     [0xA9, "TEST",   "",                              unimplemented],
-    [0xAA, "STM",    "",                              unimplemented],
-    [0xAB, "STM",    "",                              unimplemented],
+    [0xAA, "STM",    "Store multiple bytes",          unimplemented],
+    [0xAB, "STM",    "Store multiple words",          stm_w],
     [0xAC, "LDM",    "b",                             ldm_b],
     [0xAD, "LDM",    "w",                             ldm_w],
     [0xAE, "CMPM",   "",                              unimplemented],
@@ -260,7 +260,7 @@ define_instruction_set! {
     [0xF0, "BUSLOCK", "",                                             unimplemented],
     [0xF1, "UNDEF",   "",                                             unimplemented],
     [0xF2, "REPNE",   "",                                             unimplemented],
-    [0xF3, "REP",     "",                                             unimplemented],
+    [0xF3, "REP",     "Repeat next instruction until CW = 0",         rep],
     [0xF4, "HALT",    "",                                             unimplemented],
     [0xF5, "NOT1",    "",                                             unimplemented],
     [0xF6, "GROUP1",  "",                                             unimplemented],
@@ -283,7 +283,7 @@ fn nop (state: &mut CPU) -> u64 {
 
 #[inline]
 fn unimplemented (state: &mut CPU) -> u64 {
-    unimplemented!()
+    unimplemented!("opcode {}", state.memory[state.pc as usize])
 }
 
 #[inline]
@@ -372,14 +372,21 @@ fn add_b_ia (state: &mut CPU) -> u64 {
 
 #[inline]
 fn add_w_ia (state: &mut CPU) -> u64 {
-    unimplemented!()
+    let word = state.next_u16();
+    let (result, unsigned_overflow) = state.aw().overflowing_add(word);
+    let (_, signed_overflow) = (state.aw() as i16).overflowing_add(word as i16);
+    state.set_aw(result);
+    state.set_pzs(result);
+    state.set_cy(unsigned_overflow);
+    state.set_v(signed_overflow);
+    2
 }
 
 #[inline]
 fn call_d (state: &mut CPU) -> u64 {
-    let displacement = state.next_i16();
+    let displace = state.next_i16();
     state.push_u16(state.pc);
-    state.pc = ((state.pc as i16) + displacement) as u16;
+    state.pc = ((state.pc as i16) + displace) as u16;
     match state.pc % 2 {
         0 => 7,
         1 => 9,
@@ -390,8 +397,8 @@ fn call_d (state: &mut CPU) -> u64 {
 #[inline]
 /// PC ← PC + disp
 fn br_near (state: &mut CPU) -> u64 {
-    let displacement = state.next_i16();
-    state.pc = ((state.pc as i16) + displacement) as u16;
+    let displace = state.next_i16();
+    state.pc = ((state.pc as i16) + displace) as u16;
     7
 }
 
@@ -417,10 +424,10 @@ fn di (state: &mut CPU) -> u64 {
 /// CW ← CW – 1
 /// Where CW ≠ 0: PC ← PC + ext-disp8
 fn dbnz (state: &mut CPU) -> u64 {
-    let displacement = state.next_i8();
+    let displace = state.next_i8();
     state.cw = state.cw.overflowing_sub(1).0;
     if state.cw > 0 {
-        state.pc = ((state.pc as i32) + displacement as i32) as u16;
+        state.pc = ((state.pc as i32) + displace as i32) as u16;
         6
     } else {
         3
@@ -429,20 +436,20 @@ fn dbnz (state: &mut CPU) -> u64 {
 
 #[inline]
 fn be (state: &mut CPU) -> u64 {
-    let displacement = state.next_i8();
+    let displace = state.next_i8();
     if state.z() {
         6
     } else {
-        state.pc = ((state.pc as i32) + (displacement as i32)) as u16;
+        state.pc = ((state.pc as i32) + (displace as i32)) as u16;
         3
     }
 }
 
 #[inline]
 fn bne (state: &mut CPU) -> u64 {
-    let displacement = state.next_i8();
+    let displace = state.next_i8();
     if state.z() {
-        state.pc = ((state.pc as i32) + (displacement as i32)) as u16;
+        state.pc = ((state.pc as i32) + (displace as i32)) as u16;
         3
     } else {
         6
@@ -493,8 +500,8 @@ fn sub_w_t_rm (state: &mut CPU) -> u64 {
     let arg  = state.next_u8();
     let mode = (arg & 0b11000000) >> 6;
     if mode == 0b11 {
-        let src = to_source_register_value(state, arg);
-        let dst = to_target_register_reference(state, arg);
+        let src = word_register_value(state, arg & 0b00000111);
+        let dst = word_register_reference(state, (arg >> 3) & 0b00000111);
         let (result, unsigned_overflow) = (*dst).overflowing_sub(src);
         let (_, signed_overflow) = (*dst as i16).overflowing_sub(src as i16);
         *dst = result;
@@ -503,19 +510,50 @@ fn sub_w_t_rm (state: &mut CPU) -> u64 {
         state.set_v(signed_overflow);
         2
     } else {
-        let value = state.next_u16();
-        let memory = arg & 0b00000111;
-        if mode == 0b01 {
-            unimplemented!();
-        } else if mode == 0b10 {
-            unimplemented!();
-        } else if mode == 0b00 {
-            unimplemented!();
+        let addr = memory_address(state, mode, arg & 0b00000111) as usize;
+        let src  = u16::from_le_bytes([state.memory[addr], state.memory[addr + 1]]);
+        let dst  = word_register_reference(state, (arg >> 3) & 0b00000111);
+        let (result, unsigned_overflow) = (*dst).overflowing_sub(src);
+        let (_, signed_overflow) = (*dst as i16).overflowing_sub(src as i16);
+        *dst = result;
+        state.set_pzs(result);
+        state.set_cy(unsigned_overflow);
+        state.set_v(signed_overflow);
+        if addr % 2 == 0 {
+            6
         } else {
-            unreachable!();
+            8
         }
-        unimplemented!();
     }
+}
+
+#[inline]
+fn rep (state: &mut CPU) -> u64 {
+    if state.cw() == 0 {
+        state.set_pc(state.pc() + 1);
+    } else {
+        let op = state.peek_u8();
+        if (op == 0xA4) || (op == 0xA5) ||        // MOVBK
+           (op == 0xAC) || (op == 0xAD) ||        // LDM
+           (op == 0xAA) || (op == 0xAB) ||        // STM
+           (op == 0x6E) || (op == 0x6F) ||        // OUTM
+           (op == 0x6C) || (op == 0x6D)           // INM
+        {
+            // repeat while cw != 0
+            while state.cw() != 0 {
+                state.clock += execute_instruction(state, op);
+                state.set_cw(state.cw() - 1);
+            }
+        } else if (op == 0xA6) || (op == 0xA7) || // CMPBK
+            (op == 0xAE) || (op == 0xAF)          // CMPM
+        {
+            unimplemented!("REPZ/REPE {:x}", op);
+            // repeat while cw != 0 && z == 0
+        } else {
+            panic!("invalid instruction after REP")
+        }
+    }
+    2
 }
 
 #[inline]

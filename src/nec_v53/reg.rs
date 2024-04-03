@@ -224,24 +224,6 @@ define_special_register!(
     psw set_psw  mov_psw_i   inc_psw dec_psw
 );
 
-pub fn to_source_register_value (state: &CPU, arg: u8) -> u16 {
-    to_register_value(state, arg & 0b00000111)
-}
-
-pub fn to_register_value (state: &CPU, reg: u8) -> u16 {
-    match reg {
-        0b000 => state.aw,
-        0b001 => state.cw,
-        0b010 => state.dw,
-        0b011 => state.bw,
-        0b100 => state.sp,
-        0b101 => state.bp,
-        0b110 => state.ix,
-        0b111 => state.iy,
-        _ => unreachable!(),
-    }
-}
-
 #[inline]
 pub fn clr1_cy (state: &mut CPU) -> u64 {
     state.set_cy(false);
@@ -266,11 +248,35 @@ pub fn set1_dir (state: &mut CPU) -> u64 {
     2
 }
 
-pub fn to_target_register_reference (state: &mut CPU, arg: u8) -> &mut u16 {
-    to_register_reference(state, (arg >> 3) & 0b00000111)
+pub fn byte_register_value (state: &CPU, reg: u8) -> u8 {
+    match reg {
+        0b000 => state.al(),
+        0b001 => state.cl(),
+        0b010 => state.dl(),
+        0b011 => state.bl(),
+        0b100 => state.ah(),
+        0b101 => state.ch(),
+        0b110 => state.dh(),
+        0b111 => state.bh(),
+        _ => unreachable!(),
+    }
 }
 
-pub fn to_register_reference (state: &mut CPU, reg: u8) -> &mut u16 {
+pub fn word_register_value (state: &CPU, reg: u8) -> u16 {
+    match reg {
+        0b000 => state.aw,
+        0b001 => state.cw,
+        0b010 => state.dw,
+        0b011 => state.bw,
+        0b100 => state.sp,
+        0b101 => state.bp,
+        0b110 => state.ix,
+        0b111 => state.iy,
+        _ => unreachable!(),
+    }
+}
+
+pub fn word_register_reference (state: &mut CPU, reg: u8) -> &mut u16 {
     match reg {
         0b000 => &mut state.aw,
         0b001 => &mut state.cw,
@@ -284,11 +290,17 @@ pub fn to_register_reference (state: &mut CPU, reg: u8) -> &mut u16 {
     }
 }
 
-pub fn to_target_segment_register_reference (state: &mut CPU, arg: u8) -> &mut u16 {
-    to_segment_register_reference(state, (arg >> 3) & 0b00000011)
+pub fn segment_register_value (state: &CPU, sreg: u8) -> u16 {
+    match sreg {
+        0b00 => state.ds1,
+        0b01 => state.ps,
+        0b10 => state.ss,
+        0b11 => state.ds0,
+        _ => unreachable!(),
+    }
 }
 
-pub fn to_segment_register_reference (state: &mut CPU, sreg: u8) -> &mut u16 {
+pub fn segment_register_reference (state: &mut CPU, sreg: u8) -> &mut u16 {
     match sreg {
         0b00 => &mut state.ds1,
         0b01 => &mut state.ps,
