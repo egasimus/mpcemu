@@ -1,14 +1,14 @@
-use super::State;
+use super::CPU;
 
 #[test]
 /// Add the contents of memory 0:50H (word data)
 /// to contents of DW register, and store the result to 0:50H:
 fn test_add () {
-    let mut state = State::new();
+    let mut state = CPU::new();
     state.aw  = 0x1111;
     state.ds1 = 0x1112;
 
-    state.program = vec![
+    state.memory = vec![
         0xBA, 0x88, 0x88,  // MOV DW, 0x8888
         0xB8, 0x00, 0x00,  // MOV AW, 0x0000
         0xC4,              // MOV DS1, AW

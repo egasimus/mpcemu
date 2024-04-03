@@ -183,16 +183,46 @@ macro_rules! define_special_register {
     }
 }
 
-define_special_register!(ps  set_ps   mov_ps      inc_ps  dec_ps);
-define_special_register!(ss  set_ss   mov_ss      iec_ss  dec_ss);
-define_special_register!(ds0 set_ds0  mov_ds0_i   inc_ds0 dec_ds0);
-define_special_register!(ds1 set_ds1  mov_ds1_i   inc_ds1 dec_ds1);
-define_special_register!(sp  set_sp   mov_sp_i    inc_sp  dec_sp);
-define_special_register!(bp  set_bp   mov_bp_i    inc_bp  dec_bp);
-define_special_register!(pc  set_pc   mov_pc_i    inc_pc  dec_pc);
-define_special_register!(ix  set_ix   mov_ix_i    inc_ix  dec_ix);
-define_special_register!(iy  set_iy   mov_iy_i    inc_iy  dec_iy);
-define_special_register!(psw set_psw  mov_psw_i   inc_psw dec_psw);
+define_special_register!(
+    /// The PS register contains the location of the program segment.
+    ps  set_ps   mov_ps      inc_ps  dec_ps
+);
+define_special_register!(
+    /// The SS register contains the location of the stack segment.
+    ss  set_ss   mov_ss      iec_ss  dec_ss
+);
+define_special_register!(
+    /// The DS0 register contains the location of data segment 0.
+    ds0 set_ds0  mov_ds0_i   inc_ds0 dec_ds0
+);
+define_special_register!(
+    /// The DS1 register contains the location of data segment 1.
+    ds1 set_ds1  mov_ds1_i   inc_ds1 dec_ds1
+);
+define_special_register!(
+    /// The stack pointer register.
+    sp  set_sp   mov_sp_i    inc_sp  dec_sp
+);
+define_special_register!(
+    /// The block pointer register.
+    bp  set_bp   mov_bp_i    inc_bp  dec_bp
+);
+define_special_register!(
+    /// The program counter register.
+    pc  set_pc   mov_pc_i    inc_pc  dec_pc
+);
+define_special_register!(
+    /// The IX register.
+    ix  set_ix   mov_ix_i    inc_ix  dec_ix
+);
+define_special_register!(
+    /// The IY register.
+    iy  set_iy   mov_iy_i    inc_iy  dec_iy
+);
+define_special_register!(
+    /// The PSW (program status word) register contains flags.
+    psw set_psw  mov_psw_i   inc_psw dec_psw
+);
 
 pub fn to_source_register_value (state: &CPU, arg: u8) -> u16 {
     match (arg & 0b00111000) >> 3 {
