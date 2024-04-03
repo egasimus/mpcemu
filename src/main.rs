@@ -1,6 +1,6 @@
 mod nec_v53;
 fn main () -> Result<(), Box<dyn std::error::Error>> {
-    let mut cpu = nec_v53::State::new();
+    let mut cpu = nec_v53::CPU::new();
     let bin = std::fs::read("./data/mpc3000-v3.12.bin")?;
     cpu.memory = vec![];
     cpu.memory.extend_from_slice(&bin);
@@ -58,7 +58,7 @@ fn main () -> Result<(), Box<dyn std::error::Error>> {
         }
 
         #[allow(unused)]
-        pub fn execute_instruction (state: &mut State, code: u8) -> u64 {
+        pub fn execute_instruction (state: &mut CPU, code: u8) -> u64 {
             match code {
                 $($code => $impl(state)),+,
                 _ => panic!("undefined instruction {}", code),
