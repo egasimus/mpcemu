@@ -80,8 +80,17 @@ impl CPU {
         }
     }
 
+    /// Get the opcode that is currently being executed
     pub fn opcode (&self) -> u8 {
         self.opcode
+    }
+
+    pub fn jump_i8 (&mut self, displace: i8) {
+        self.pc = ((self.pc as i16) + (displace as i16)) as u16;
+    }
+
+    pub fn jump_i16 (&mut self, displace: i16) {
+        self.pc = ((self.pc as i16) + displace) as u16;
     }
 
 }

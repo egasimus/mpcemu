@@ -243,7 +243,7 @@ define_instruction_set! {
     [0xE0, "DBNZE", "",                                    unimplemented],
     [0xE1, "DBNZE", "",                                    unimplemented],
     [0xE2, "DBNZ",  "Decrement CW and branch if not zero", dbnz],
-    [0xE3, "BCWZ",  "",                                    unimplemented],
+    [0xE3, "BCWZ",  "Branch if CW is zero",                bcwz],
     [0xE4, "IN",    "b",                                   in_b],
     [0xE5, "IN",    "w",                                   in_w],
     [0xE6, "OUT",   "b",                                   out_b],
@@ -290,7 +290,7 @@ fn unimplemented (state: &mut CPU) -> u64 {
 fn call_d (state: &mut CPU) -> u64 {
     let displace = state.next_i16();
     state.push_u16(state.pc);
-    state.pc = ((state.pc as i16) + displace) as u16;
+    state.jump_i16(displace);
     match state.pc % 2 {
         0 => 7,
         1 => 9,
@@ -302,7 +302,7 @@ fn call_d (state: &mut CPU) -> u64 {
 /// PC ← PC + disp
 fn br_near (state: &mut CPU) -> u64 {
     let displace = state.next_i16();
-    state.pc = ((state.pc as i16) + displace) as u16;
+    state.jump_i16(displace);
     7
 }
 
@@ -331,7 +331,19 @@ fn dbnz (state: &mut CPU) -> u64 {
     let displace = state.next_i8();
     state.cw = state.cw.overflowing_sub(1).0;
     if state.cw > 0 {
-        state.pc = ((state.pc as i32) + displace as i32) as u16;
+        state.jump_i8(displace);
+        6
+    } else {
+        3
+    }
+}
+
+#[inline]
+/// Branch if CW is zero.
+fn bcwz (state: &mut CPU) -> u64 {
+    let displace = state.next_i8();
+    if state.cw() == 0 {
+        state.jump_i8(displace);
         6
     } else {
         3
@@ -344,7 +356,7 @@ fn be (state: &mut CPU) -> u64 {
     if state.z() {
         6
     } else {
-        state.pc = ((state.pc as i32) + (displace as i32)) as u16;
+        state.jump_i8(displace);
         3
     }
 }
@@ -353,7 +365,7 @@ fn be (state: &mut CPU) -> u64 {
 fn bne (state: &mut CPU) -> u64 {
     let displace = state.next_i8();
     if state.z() {
-        state.pc = ((state.pc as i32) + (displace as i32)) as u16;
+        state.jump_i8(displace);
         3
     } else {
         6
