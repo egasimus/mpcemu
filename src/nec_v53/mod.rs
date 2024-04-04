@@ -4,6 +4,7 @@ mod reg;
 mod flag;
 mod mem;
 mod math;
+mod shift;
 mod inst;
 #[cfg(test)] mod test;
 
@@ -12,6 +13,7 @@ pub use self::{
     flag::*,
     mem::*,
     math::*,
+    shift::*,
     inst::*,
 };
 
