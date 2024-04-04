@@ -1,0 +1,30 @@
+pub const B0: u8 = 0b00000001;
+pub const B1: u8 = 0b00000010;
+pub const B2: u8 = 0b00000100;
+pub const B3: u8 = 0b00001000;
+pub const B4: u8 = 0b00010000;
+pub const B5: u8 = 0b00100000;
+pub const B6: u8 = 0b01000000;
+pub const B7: u8 = 0b10000000;
+
+pub const B_MODE: u8 = B7|B6;
+pub const B_REG:  u8 = B5|B4|B3;
+pub const B_SREG: u8 = B4|B3;
+pub const B_MEM:  u8 = B2|B1|B0;
+
+pub const W0:  u16 = 0b0000000000000001;
+pub const W1:  u16 = 0b0000000000000010;
+pub const W2:  u16 = 0b0000000000000100;
+pub const W3:  u16 = 0b0000000000001000;
+pub const W4:  u16 = 0b0000000000010000;
+pub const W5:  u16 = 0b0000000000100000;
+pub const W6:  u16 = 0b0000000001000000;
+pub const W7:  u16 = 0b0000000010000000;
+pub const W8:  u16 = 0b0000000100000000;
+pub const W9:  u16 = 0b0000001000000000;
+pub const W10: u16 = 0b0000010000000000;
+pub const W11: u16 = 0b0000100000000000;
+pub const W12: u16 = 0b0001000000000000;
+pub const W13: u16 = 0b0010000000000000;
+pub const W14: u16 = 0b0100000000000000;
+pub const W15: u16 = 0b1000000000000000;

@@ -79,8 +79,9 @@ impl CPU {
     }
     /// Write byte to output port
     pub fn output_u16 (&mut self, addr: u16, data: u16) {
-        self.output_u8(addr, (data & 0b0000000011111111) as u8);
-        self.output_u8(addr + 1, (data >> 8) as u8);
+        let [lo, hi] = data.to_le_bytes();
+        self.output_u8(addr + 0, lo);
+        self.output_u8(addr + 1, hi);
     }
     /// Push a byte to the stack
     pub fn push_u8 (&mut self, data: u8) {
@@ -92,8 +93,9 @@ impl CPU {
     }
     /// Push a word to the stack
     pub fn push_u16 (&mut self, data: u16) {
-        self.push_u8((data & 0b0000000011111111) as u8);
-        self.push_u8((data >> 8) as u8);
+        let [lo, hi] = data.to_le_bytes();
+        self.push_u8(lo);
+        self.push_u8(hi);
     }
     pub fn pop_u8 (&mut self) -> u8 {
         let data = self.memory[self.sp as usize];
@@ -271,8 +273,8 @@ pub fn mov_mw_imm (state: &mut CPU) -> u64 {
 /// Move word from register
 pub fn mov_w_from_reg_to_mem (state: &mut CPU) -> u64 {
     let target   = state.next_u8();
-    let address  = memory_address(state, (target & 0b11000000) >> 6, target & 0b00000111);
-    let value    = word_register_value(state, (target & 0b00111000) >> 3);
+    let address  = memory_address(state, (target & B_MODE) >> 6, target & B_MEM);
+    let value    = word_register_value(state, (target & B_REG) >> 3);
     state.memory[address as usize + 0] = value as u8;
     state.memory[address as usize + 1] = (value >> 8) as u8;
     if address % 2 == 0 {
@@ -286,15 +288,15 @@ pub fn mov_w_from_reg_to_mem (state: &mut CPU) -> u64 {
 /// Move word to register
 pub fn mov_w_to_reg (state: &mut CPU) -> u64 {
     let arg  = state.next_u8();
-    let mode = (arg & 0b11000000) >> 6;
+    let mode = (arg & B_MODE) >> 6;
     if mode == 0b11 {
-        let src = word_register_value(state, arg & 0b00000111);
-        let dst = word_register_reference(state, (arg >> 3) & 0b0000111);
+        let src = word_register_value(state, arg & B_MEM);
+        let dst = word_register_reference(state, (arg & B_REG) >> 3);
         *dst = src;
         2
     } else {
         let value = state.next_u16();
-        let memory = arg & 0b00000111;
+        let memory = arg & B_MEM;
         if mode == 0b01 {
             match memory {
                 0b000 => unimplemented!(),
@@ -340,14 +342,14 @@ pub fn mov_w_to_reg (state: &mut CPU) -> u64 {
 #[inline]
 pub fn mov_w_from_sreg (state: &mut CPU) -> u64 {
     let arg   = state.next_u8();
-    let mode  = (arg & 0b11000000) >> 6;
-    let value = segment_register_value(state, (arg >> 3) & 0b00000011);
+    let mode  = (arg & B_MODE) >> 6;
+    let value = segment_register_value(state, (arg & B_SREG) >> 3);
     if mode == 0b11 {
-        let dst = word_register_reference(state, arg & 0b00000111);
+        let dst = word_register_reference(state, arg & B_MEM);
         *dst = value;
         2
     } else {
-        let address = memory_address(state, mode, arg & 0b00000111);
+        let address = memory_address(state, mode, arg & B_MEM);
         state.memory[address as usize + 0] = value as u8;
         state.memory[address as usize + 1] = (value >> 8) as u8;
         if address % 2 == 0 {
@@ -362,15 +364,15 @@ pub fn mov_w_from_sreg (state: &mut CPU) -> u64 {
 /// Move word to segment register
 pub fn mov_w_to_sreg (state: &mut CPU) -> u64 {
     let arg  = state.next_u8();
-    let mode = (arg & 0b11000000) >> 6;
+    let mode = (arg & B_MODE) >> 6;
     if mode == 0b11 {
-        let src = word_register_value(state, arg & 0b00000111);
-        let dst = segment_register_reference(state, (arg >> 3) & 0b00000011);
+        let src = word_register_value(state, arg & B_MEM);
+        let dst = segment_register_reference(state, (arg & B_SREG) >> 3);
         *dst = src;
         2
     } else {
         let value = state.next_u16();
-        let memory = arg & 0b00000111;
+        let memory = arg & B_MEM;
         if mode == 0b01 {
             match memory {
                 0b000 => unimplemented!(),

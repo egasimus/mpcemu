@@ -320,7 +320,7 @@ fn br_far (state: &mut CPU) -> u64 {
 #[inline]
 /// IE ← 0
 fn di (state: &mut CPU) -> u64 {
-    state.psw = state.psw & 0b1111110111111111;
+    state.set_ie(false);
     2
 }
 

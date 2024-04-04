@@ -1,5 +1,6 @@
 /// <https://datasheets.chipdb.org/NEC/V20-V30/U11301EJ5V0UMJ1.PDF>
 
+mod bit;
 mod reg;
 mod flag;
 mod mem;
@@ -9,6 +10,7 @@ mod inst;
 #[cfg(test)] mod test;
 
 pub use self::{
+    bit::*,
     reg::*,
     flag::*,
     mem::*,
@@ -59,7 +61,7 @@ impl CPU {
             sp:       0x0000,
             bp:       0x0000,
             pc:       0x0000,
-            psw:      0b1111000000000010,
+            psw:      W15 | W14 | W13 | W12 | W2,
             ix:       0x0000,
             iy:       0x0000,
             segment:  None,
