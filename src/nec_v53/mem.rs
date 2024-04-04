@@ -446,6 +446,63 @@ pub fn stm_w (state: &mut CPU) -> u64 {
 }
 
 #[inline]
+pub fn ldm_b (state: &mut CPU) -> u64 {
+    let data = state.read_u8(state.ix);
+    state.set_al(data);
+    if state.dir() {
+        state.ix = state.ix - 1;
+    } else {
+        state.ix = state.ix + 1;
+    }
+    5
+}
+
+#[inline]
+pub fn ldm_w (state: &mut CPU) -> u64 {
+    let data = state.read_u16(state.ix);
+    state.aw = data;
+    if state.dir() {
+        state.ix = state.ix - 2;
+    } else {
+        state.ix = state.ix + 2;
+    }
+    if state.ix % 2 == 1 {
+        7
+    } else {
+        5
+    }
+}
+
+#[inline]
+pub fn rep (state: &mut CPU) -> u64 {
+    if state.cw() == 0 {
+        state.set_pc(state.pc() + 1);
+    } else {
+        let op = state.peek_u8();
+        if (op == 0xA4) || (op == 0xA5) ||        // MOVBK
+           (op == 0xAC) || (op == 0xAD) ||        // LDM
+           (op == 0xAA) || (op == 0xAB) ||        // STM
+           (op == 0x6E) || (op == 0x6F) ||        // OUTM
+           (op == 0x6C) || (op == 0x6D)           // INM
+        {
+            // repeat while cw != 0
+            while state.cw() != 0 {
+                state.clock += execute_instruction(state, op);
+                state.set_cw(state.cw() - 1);
+            }
+        } else if (op == 0xA6) || (op == 0xA7) || // CMPBK
+            (op == 0xAE) || (op == 0xAF)          // CMPM
+        {
+            unimplemented!("REPZ/REPE {:x}", op);
+            // repeat while cw != 0 && z == 0
+        } else {
+            panic!("invalid instruction after REP")
+        }
+    }
+    2
+}
+
+#[inline]
 pub fn memory_address (state: &mut CPU, mode: u8, mem: u8) -> u16 {
     match mode {
         0b00 => match mem {

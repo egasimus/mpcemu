@@ -1,16 +1,18 @@
-/// https://datasheets.chipdb.org/NEC/V20-V30/U11301EJ5V0UMJ1.PDF
+/// <https://datasheets.chipdb.org/NEC/V20-V30/U11301EJ5V0UMJ1.PDF>
 
 mod reg;
 mod flag;
-mod inst;
 mod mem;
+mod math;
+mod inst;
 #[cfg(test)] mod test;
 
 pub use self::{
     reg::*,
     flag::*,
-    inst::*,
     mem::*,
+    math::*,
+    inst::*,
 };
 
 pub struct CPU {
@@ -33,6 +35,7 @@ pub struct CPU {
     ix:  u16,
     iy:  u16,
     pub segment: Option<Segment>,
+    opcode: u8,
 }
 
 impl CPU {
@@ -58,17 +61,23 @@ impl CPU {
             ix:       0x0000,
             iy:       0x0000,
             segment:  None,
+            opcode:   0xF1
         }
     }
 
     /// Read and execute the next instruction in the program
     pub fn step (&mut self) {
         let opcode = self.next_u8();
+        self.opcode = opcode;
         self.clock += execute_instruction(self, opcode);
         // Reset segment override, except if it was just set:
         if !((opcode == 0x26) || (opcode == 0x2E) || (opcode == 0x36) || (opcode == 0x3E)) {
             self.segment = None
         }
+    }
+
+    pub fn opcode (&self) -> u8 {
+        self.opcode
     }
 
 }
