@@ -172,22 +172,22 @@ define_instruction_set! {
     [0x9E, "MOV PSW, AH", "",                  unimplemented],
     [0x9F, "MOV AH, PSW", "",                  unimplemented],
 
-    [0xA0, "MOV AL", "Move byte into AL from memory", mov_al_m],
-    [0xA1, "MOV AW", "Move word into AW from memory", mov_aw_m],
-    [0xA2, "MOV",    "Move byte into memory from AL", mov_m_al],
-    [0xA3, "MOV",    "Move word into memory from AW", mov_m_aw],
-    [0xA4, "MOVBK",  "",                              unimplemented],
-    [0xA5, "MOVBK",  "",                              unimplemented],
-    [0xA6, "CMPBK",  "",                              unimplemented],
-    [0xA7, "CMPBK",  "",                              unimplemented],
-    [0xA8, "TEST",   "",                              unimplemented],
-    [0xA9, "TEST",   "",                              unimplemented],
-    [0xAA, "STM",    "Store multiple bytes",          unimplemented],
-    [0xAB, "STM",    "Store multiple words",          stm_w],
-    [0xAC, "LDM",    "b",                             ldm_b],
-    [0xAD, "LDM",    "w",                             ldm_w],
-    [0xAE, "CMPM",   "",                              unimplemented],
-    [0xAF, "CMPM",   "",                              unimplemented],
+    [0xA0, "MOV AL", "Move byte into AL from memory",               mov_al_m],
+    [0xA1, "MOV AW", "Move word into AW from memory",               mov_aw_m],
+    [0xA2, "MOV",    "Move byte into memory from AL",               mov_m_al],
+    [0xA3, "MOV",    "Move word into memory from AW",               mov_m_aw],
+    [0xA4, "MOVBK",  "Move byte from memory at IX to memory at IY", unimplemented],
+    [0xA5, "MOVBK",  "Move word from memory at IX to memory at IY", movbk_w],
+    [0xA6, "CMPBK",  "",                                            unimplemented],
+    [0xA7, "CMPBK",  "",                                            unimplemented],
+    [0xA8, "TEST",   "",                                            unimplemented],
+    [0xA9, "TEST",   "",                                            unimplemented],
+    [0xAA, "STM",    "Store multiple bytes",                        unimplemented],
+    [0xAB, "STM",    "Store multiple words",                        stm_w],
+    [0xAC, "LDM",    "b",                                           ldm_b],
+    [0xAD, "LDM",    "w",                                           ldm_w],
+    [0xAE, "CMPM",   "",                                            unimplemented],
+    [0xAF, "CMPM",   "",                                            unimplemented],
     
     [0xB0, "MOV AL", "Move byte constant into AL", mov_al_i],
     [0xB1, "MOV CL", "Move byte constant into CL", mov_cl_i],
@@ -422,16 +422,30 @@ mod group3 {
     }
 
     #[inline]
+    // temp1 ← (imm8 × 4 + 1, imm8 × 4);
+    // temp2 ← (imm8 × 4 + 3, imm8 × 4 + 2);
+    // XA ← 1;
+    // PC ← temp1;
+    // PS ← temp2.
     fn brkxa (state: &mut CPU) -> u64 {
         let addr = state.next_u8();
         state.pc = state.read_u16(addr as u16 * 4);
         state.ps = state.read_u16(addr as u16 * 4 + 2);
+        // TODO: set XA (internal I/O address: FF80H)
         12
     }
 
     #[inline]
+    /// temp1 ← (imm8 × 4 + 1, imm8 × 4);
+    /// temp2 ← (imm8 × 4 + 3, imm8 × 4 + 2);
+    /// XA ← 0;
+    /// PC ← temp1;
+    /// PS ← temp2.
     fn retxa (state: &mut CPU) -> u64 {
-        unimplemented!();
+        let addr = state.next_u8();
+        state.pc = state.read_u16(addr as u16 * 4);
+        state.ps = state.read_u16(addr as u16 * 4 + 2);
+        // TODO: reset XA
         12
     }
 }

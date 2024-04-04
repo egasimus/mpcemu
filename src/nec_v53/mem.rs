@@ -270,6 +270,28 @@ pub fn mov_mw_imm (state: &mut CPU) -> u64 {
 }
 
 #[inline]
+pub fn movbk_w (state: &mut CPU) -> u64 {
+    let dst = state.ds1() as u32 * 0x10 + state.iy() as u32;
+    let src = state.ea(state.ix());
+    state.memory[dst as usize + 0] = state.memory[src as usize + 0];
+    state.memory[dst as usize + 1] = state.memory[src as usize + 1];
+    if state.dir() {
+        state.set_ix(state.ix() - 2);
+        state.set_iy(state.iy() - 2);
+    } else {
+        state.set_ix(state.ix() + 2);
+        state.set_iy(state.iy() + 2);
+    }
+    if (dst % 2 == 0) && (src % 2 == 0) {
+        6
+    } else if (dst % 2 == 1) && (src % 2 == 1) {
+        10
+    } else {
+        8
+    }
+}
+
+#[inline]
 /// Move word from register
 pub fn mov_w_from_reg_to_mem (state: &mut CPU) -> u64 {
     let target   = state.next_u8();
@@ -488,6 +510,7 @@ pub fn rep (state: &mut CPU) -> u64 {
            (op == 0x6C) || (op == 0x6D)           // INM
         {
             // repeat while cw != 0
+            state.opcode = op;
             while state.cw() != 0 {
                 state.clock += execute_instruction(state, op);
                 state.set_cw(state.cw() - 1);
@@ -495,6 +518,7 @@ pub fn rep (state: &mut CPU) -> u64 {
         } else if (op == 0xA6) || (op == 0xA7) || // CMPBK
             (op == 0xAE) || (op == 0xAF)          // CMPM
         {
+            state.opcode = op;
             unimplemented!("REPZ/REPE {:x}", op);
             // repeat while cw != 0 && z == 0
         } else {
