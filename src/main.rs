@@ -6,28 +6,31 @@ fn main () -> Result<(), Box<dyn std::error::Error>> {
     cpu.memory.extend_from_slice(&bin);
     cpu.memory.extend_from_slice(&bin);
     for i in 0..0x4000 {
-        print!("\n {:8x}", i * 0x20);
+        print!("\n {:8X}", i * 0x20);
         for j in 0..32 {
-            print!(" {:2x}", cpu.memory[i * 0x20 + j]);
+            print!(" {:02x}", cpu.memory[i * 0x20 + j]);
         }
     }
-    let mut last_address: usize = 0;
-    let mut last_opcode:  u8    = 0;
+    let mut last_address: usize = cpu.address();
+    let mut last_opcode:  u8    = cpu.opcode();
+    let mut last_clock:   u64   = cpu.clock;
+    println!("\n\nRunning from {:x}:", cpu.address());
     loop {
-        //let segment = cpu.ps() as u32 * 0x10;
+        cpu.step();
+        let clock   = cpu.clock;
         let address = cpu.address();
         let opcode  = cpu.opcode();
-        //println!("0x{:x} + 0x{:x} = 0x{:x}", segment, cpu.pc, segment + cpu.pc as u32);
+        let name    = nec_v53::get_instruction_name(opcode);
+        let info    = nec_v53::get_instruction_description(opcode);
         if last_address != address {
-            print!("\n{address:x} {opcode:x} {}", nec_v53::get_instruction_name(opcode));
+            print!("\n{clock:10}  {address:X}  {opcode:02x}  {name:10}  {info}");
         } else {
             print!(".")
         }
-        cpu.step();
         last_address = address;
         last_opcode  = opcode;
+        last_clock   = cpu.clock;
     }
-    Ok(())
 }
 
 #[macro_export] macro_rules! define_instruction_set (
