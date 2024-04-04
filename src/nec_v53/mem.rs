@@ -13,6 +13,10 @@ pub enum Segment {
 }
 
 impl CPU {
+    /// Read-only handle to memory
+    pub fn memory (&self) -> &[u8] {
+        &self.memory
+    }
     /// Effective address
     pub fn ea (&self, addr: u16) -> usize {
         ((match self.segment {
@@ -62,6 +66,18 @@ impl CPU {
         let lo = self.read_u8(addr);
         let hi = self.read_u8(addr + 1);
         u16::from_le_bytes([lo, hi])
+    }
+    /// Write byte to effective address
+    pub fn write_u8 (&mut self, addr: u16, value: u8) {
+        let ea = self.ea(addr);
+        self.memory[ea] = value;
+    }
+    /// Write word to effective address
+    pub fn write_u16 (&mut self, addr: u16, value: u16) {
+        let ea = self.ea(addr);
+        let [lo, hi] = value.to_le_bytes();
+        self.memory[ea + 0] = lo;
+        self.memory[ea + 1] = hi;
     }
     /// Read byte from input port
     pub fn input_u8 (&self, addr: u16) -> u8 {
@@ -294,12 +310,11 @@ pub fn movbk_w (state: &mut CPU) -> u64 {
 #[inline]
 /// Move word from register
 pub fn mov_w_from_reg_to_mem (state: &mut CPU) -> u64 {
-    let target   = state.next_u8();
-    let address  = memory_address(state, (target & B_MODE) >> 6, target & B_MEM);
-    let value    = word_register_value(state, (target & B_REG) >> 3);
-    state.memory[address as usize + 0] = value as u8;
-    state.memory[address as usize + 1] = (value >> 8) as u8;
-    if address % 2 == 0 {
+    let arg  = state.next_u8();
+    let addr = state.memory_address((arg & B_MODE) >> 6, arg & B_MEM);
+    let val  = state.register_value_u16((arg & B_REG) >> 3);
+    state.write_u16(addr, val);
+    if addr % 2 == 0 {
         3
     } else {
         5
@@ -312,8 +327,8 @@ pub fn mov_w_to_reg (state: &mut CPU) -> u64 {
     let arg  = state.next_u8();
     let mode = (arg & B_MODE) >> 6;
     if mode == 0b11 {
-        let src = word_register_value(state, arg & B_MEM);
-        let dst = word_register_reference(state, (arg & B_REG) >> 3);
+        let src = state.register_value_u16(arg & B_MEM);
+        let dst = state.register_reference_u16((arg & B_REG) >> 3);
         *dst = src;
         2
     } else {
@@ -365,16 +380,15 @@ pub fn mov_w_to_reg (state: &mut CPU) -> u64 {
 pub fn mov_w_from_sreg (state: &mut CPU) -> u64 {
     let arg   = state.next_u8();
     let mode  = (arg & B_MODE) >> 6;
-    let value = segment_register_value(state, (arg & B_SREG) >> 3);
+    let value = state.segment_register_value((arg & B_SREG) >> 3);
     if mode == 0b11 {
-        let dst = word_register_reference(state, arg & B_MEM);
+        let dst = state.register_reference_u16(arg & B_MEM);
         *dst = value;
         2
     } else {
-        let address = memory_address(state, mode, arg & B_MEM);
-        state.memory[address as usize + 0] = value as u8;
-        state.memory[address as usize + 1] = (value >> 8) as u8;
-        if address % 2 == 0 {
+        let addr = state.memory_address(mode, arg & B_MEM);
+        state.write_u16(addr, value);
+        if addr % 2 == 0 {
             3
         } else {
             5
@@ -388,8 +402,8 @@ pub fn mov_w_to_sreg (state: &mut CPU) -> u64 {
     let arg  = state.next_u8();
     let mode = (arg & B_MODE) >> 6;
     if mode == 0b11 {
-        let src = word_register_value(state, arg & B_MEM);
-        let dst = segment_register_reference(state, (arg & B_SREG) >> 3);
+        let src = state.register_value_u16(arg & B_MEM);
+        let dst = state.segment_register_reference((arg & B_SREG) >> 3);
         *dst = src;
         2
     } else {
@@ -455,8 +469,8 @@ pub fn mov_ds0_aw (state: &mut CPU) -> u64 {
 #[inline]
 pub fn stm_w (state: &mut CPU) -> u64 {
     let iy = state.iy();
-    state.memory[iy as usize] = state.al();
-    state.memory[iy as usize + 1] = state.ah();
+    let aw = state.aw();
+    state.write_u16(iy, aw);
     state.set_iy(if state.dir() {
         iy.overflowing_sub(2).0
     } else {
@@ -526,50 +540,4 @@ pub fn rep (state: &mut CPU) -> u64 {
         }
     }
     2
-}
-
-#[inline]
-pub fn memory_address (state: &mut CPU, mode: u8, mem: u8) -> u16 {
-    match mode {
-        0b00 => match mem {
-            0b000 => state.bw() + state.ix(),
-            0b001 => state.bw() + state.iy(),
-            0b010 => state.bp() + state.ix(),
-            0b011 => state.bp() + state.iy(),
-            0b100 => state.ix(),
-            0b101 => state.iy(),
-            0b110 => unimplemented!("direct address"),
-            0b111 => state.bw(),
-            _ => panic!("invalid memory inner mode {:b}", mem)
-        },
-        0b01 => {
-            let displace = state.next_u8() as u16;
-            match mem {
-                0b000 => state.bw() + state.ix() + displace,
-                0b001 => state.bw() + state.iy() + displace,
-                0b010 => state.bp() + state.ix() + displace,
-                0b011 => state.bp() + state.iy() + displace,
-                0b100 => state.ix() + displace,
-                0b101 => state.iy() + displace,
-                0b110 => state.bp() + displace,
-                0b111 => state.bw() + displace,
-                _ => panic!("invalid memory inner mode {:b}", mem)
-            }
-        },
-        0b10 => {
-            let displace = state.next_u16();
-            match mem {
-                0b000 => state.bw() + state.ix() + displace,
-                0b001 => state.bw() + state.iy() + displace,
-                0b010 => state.bp() + state.ix() + displace,
-                0b011 => state.bp() + state.iy() + displace,
-                0b100 => state.ix() + displace,
-                0b101 => state.iy() + displace,
-                0b110 => state.bp() + displace,
-                0b111 => state.bw() + displace,
-                _ => panic!("invalid memory inner mode {:b}", mem)
-            }
-        },
-        _ => panic!("invalid memory outer mode {:b}", mode)
-    }
 }

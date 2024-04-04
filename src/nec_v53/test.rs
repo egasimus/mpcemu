@@ -4,7 +4,7 @@ use super::CPU;
 /// Add the contents of memory 0:50H (word data)
 /// to contents of DW register, and store the result to 0:50H:
 fn test_add () {
-    let mut state = CPU::new();
+    let mut state = CPU::new(vec![]);
     state.aw  = 0x1111;
     state.ds1 = 0x1112;
 
@@ -44,6 +44,6 @@ fn test_add () {
 
     assert_eq!(state.clock, 23);
     assert_eq!(state.pc, 12);
-    assert_eq!(state.memory[0x0050], 0x88);
-    assert_eq!(state.memory[0x0051], 0x88);
+    assert_eq!(state.memory()[0x0050], 0x88);
+    assert_eq!(state.memory()[0x0051], 0x88);
 }

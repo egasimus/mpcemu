@@ -55,10 +55,10 @@ pub fn get_source_word (state: &mut CPU, arg: u8) -> u16 {
     let mode = (arg & B_MODE) >> 6;
     let mem  = arg & B_MEM;
     match mode {
-        0b11 => word_register_value(state, mem),
+        0b11 => state.register_value_u16(mem),
         _ => {
-            let addr = memory_address(state, mode, mem) as usize;
-            u16::from_le_bytes([state.memory[addr], state.memory[addr + 1]])
+            let addr = state.memory_address(mode, mem);
+            state.read_u16(addr)
         }
     }
 }
@@ -69,13 +69,11 @@ pub fn set_source_word (state: &mut CPU, arg: u8, val: u16){
     let mem  = arg & B_MEM;
     match mode {
         0b11 => {
-            *word_register_reference(state, mem) = val;
+            *state.register_reference_u16(mem) = val;
         },
         _ => {
-            let addr = memory_address(state, mode, mem) as usize;
-            let [lo, hi] = val.to_le_bytes();
-            state.memory[addr] = lo;
-            state.memory[addr + 1] = hi;
+            let addr = state.memory_address(mode, mem);
+            state.write_u16(addr, val);
         }
     }
 }

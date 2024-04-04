@@ -20,9 +20,9 @@ pub use self::{
 };
 
 pub struct CPU {
-    pub clock:    u64,
-    pub memory:   Vec<u8>,
-    pub ports:    [u8;65536],
+    memory: Vec<u8>,
+    pub clock: u64,
+    pub ports: [u8;65536],
     pub internal: [u8;256],
     aw:  u16,
     bw:  u16,
@@ -44,10 +44,10 @@ pub struct CPU {
 
 impl CPU {
 
-    pub fn new () -> Self {
+    pub fn new (memory: Vec<u8>) -> Self {
         Self {
+            memory,
             clock:    0x0000,
-            memory:   vec![0x00;65536],
             ports:    [0x00;65536],
             internal: [0x00;256],
             aw:       0x0000,
@@ -91,6 +91,114 @@ impl CPU {
 
     pub fn jump_i16 (&mut self, displace: i16) {
         self.pc = ((self.pc as i16) + displace) as u16;
+    }
+
+    pub fn register_value_u8 (&self, reg: u8) -> u8 {
+        match reg {
+            0b000 => self.al(),
+            0b001 => self.cl(),
+            0b010 => self.dl(),
+            0b011 => self.bl(),
+            0b100 => self.ah(),
+            0b101 => self.ch(),
+            0b110 => self.dh(),
+            0b111 => self.bh(),
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn register_value_u16 (&self, reg: u8) -> u16 {
+        match reg {
+            0b000 => self.aw(),
+            0b001 => self.cw(),
+            0b010 => self.dw(),
+            0b011 => self.bw(),
+            0b100 => self.sp(),
+            0b101 => self.bp(),
+            0b110 => self.ix(),
+            0b111 => self.iy(),
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn register_reference_u16 (&mut self, reg: u8) -> &mut u16 {
+        match reg {
+            0b000 => &mut self.aw,
+            0b001 => &mut self.cw,
+            0b010 => &mut self.dw,
+            0b011 => &mut self.bw,
+            0b100 => &mut self.sp,
+            0b101 => &mut self.bp,
+            0b110 => &mut self.ix,
+            0b111 => &mut self.iy,
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn segment_register_value (&self, sreg: u8) -> u16 {
+        match sreg {
+            0b00 => self.ds1,
+            0b01 => self.ps,
+            0b10 => self.ss,
+            0b11 => self.ds0,
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn segment_register_reference (&mut self, sreg: u8) -> &mut u16 {
+        match sreg {
+            0b00 => &mut self.ds1,
+            0b01 => &mut self.ps,
+            0b10 => &mut self.ss,
+            0b11 => &mut self.ds0,
+            _ => unreachable!(),
+        }
+    }
+
+    #[inline]
+    pub fn memory_address (&mut self, mode: u8, mem: u8) -> u16 {
+        match mode {
+            0b00 => match mem {
+                0b000 => self.bw() + self.ix(),
+                0b001 => self.bw() + self.iy(),
+                0b010 => self.bp() + self.ix(),
+                0b011 => self.bp() + self.iy(),
+                0b100 => self.ix(),
+                0b101 => self.iy(),
+                0b110 => unimplemented!("direct address"),
+                0b111 => self.bw(),
+                _ => panic!("invalid memory inner mode {:b}", mem)
+            },
+            0b01 => {
+                let displace = self.next_u8() as u16;
+                match mem {
+                    0b000 => self.bw() + self.ix() + displace,
+                    0b001 => self.bw() + self.iy() + displace,
+                    0b010 => self.bp() + self.ix() + displace,
+                    0b011 => self.bp() + self.iy() + displace,
+                    0b100 => self.ix() + displace,
+                    0b101 => self.iy() + displace,
+                    0b110 => self.bp() + displace,
+                    0b111 => self.bw() + displace,
+                    _ => panic!("invalid memory inner mode {:b}", mem)
+                }
+            },
+            0b10 => {
+                let displace = self.next_u16();
+                match mem {
+                    0b000 => self.bw() + self.ix() + displace,
+                    0b001 => self.bw() + self.iy() + displace,
+                    0b010 => self.bp() + self.ix() + displace,
+                    0b011 => self.bp() + self.iy() + displace,
+                    0b100 => self.ix() + displace,
+                    0b101 => self.iy() + displace,
+                    0b110 => self.bp() + displace,
+                    0b111 => self.bw() + displace,
+                    _ => panic!("invalid memory inner mode {:b}", mem)
+                }
+            },
+            _ => panic!("invalid memory outer mode {:b}", mode)
+        }
     }
 
 }

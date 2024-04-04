@@ -428,9 +428,17 @@ mod group3 {
     // PC ← temp1;
     // PS ← temp2.
     fn brkxa (state: &mut CPU) -> u64 {
-        let addr = state.next_u8();
-        state.pc = state.read_u16(addr as u16 * 4);
-        state.ps = state.read_u16(addr as u16 * 4 + 2);
+        let addr = state.next_u8() as usize;
+        //panic!("{addr} {:x?}", &state.memory[addr*4..addr*4+4]);
+        state.pc = u16::from_le_bytes([
+            state.memory[addr as usize * 4 + 0],
+            state.memory[addr as usize * 4 + 1],
+        ]);
+        state.ps = u16::from_le_bytes([
+            state.memory[addr as usize * 4 + 2],
+            state.memory[addr as usize * 4 + 3],
+        ]);
+        println!("\n==========BRKXA {:x} {:x} {:x} {:x}", addr, state.pc, state.ps, state.address());
         // TODO: set XA (internal I/O address: FF80H)
         12
     }
@@ -443,8 +451,14 @@ mod group3 {
     /// PS ← temp2.
     fn retxa (state: &mut CPU) -> u64 {
         let addr = state.next_u8();
-        state.pc = state.read_u16(addr as u16 * 4);
-        state.ps = state.read_u16(addr as u16 * 4 + 2);
+        state.pc = u16::from_le_bytes([
+            state.memory[addr as usize * 4 + 0],
+            state.memory[addr as usize * 4 + 1],
+        ]);
+        state.ps = u16::from_le_bytes([
+            state.memory[addr as usize * 4 + 2],
+            state.memory[addr as usize * 4 + 3],
+        ]);
         // TODO: reset XA
         12
     }

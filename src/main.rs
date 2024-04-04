@@ -1,35 +1,37 @@
 mod nec_v53;
 fn main () -> Result<(), Box<dyn std::error::Error>> {
-    let mut cpu = nec_v53::CPU::new();
     let bin = std::fs::read("./data/mpc3000-v3.12.bin")?;
-    cpu.memory = vec![];
-    cpu.memory.extend_from_slice(&bin);
-    cpu.memory.extend_from_slice(&bin);
+    let mut memory = vec![];
+    memory.extend_from_slice(&bin);
+    memory.extend_from_slice(&bin);
+    let mut cpu = nec_v53::CPU::new(memory);
     for i in 0..0x4000 {
         print!("\n {:8X}", i * 0x20);
         for j in 0..32 {
-            print!(" {:02x}", cpu.memory[i * 0x20 + j]);
+            print!(" {:02x}", cpu.memory()[i * 0x20 + j]);
         }
     }
+    let mut first: bool = true;
     let mut last_address: usize = cpu.address();
-    let mut last_opcode:  u8    = cpu.opcode();
+    let mut last_opcode:  u8    = 0;
     let mut last_clock:   u64   = cpu.clock;
     println!("\n\nRunning from {:x}:", cpu.address());
     loop {
-        cpu.step();
         let clock   = cpu.clock;
         let address = cpu.address();
+        cpu.step();
         let opcode  = cpu.opcode();
         let name    = nec_v53::get_instruction_name(opcode);
         let info    = nec_v53::get_instruction_description(opcode);
-        if last_address != address {
-            print!("\n{clock:10}  {address:X}  {opcode:02x}  {name:10}  {info}");
+        if first || last_address != address {
+            print!("\n{last_clock:10}  {address:05X}  {opcode:02x}  {name:10}  {info}");
         } else {
             print!(".")
         }
         last_address = address;
         last_opcode  = opcode;
         last_clock   = cpu.clock;
+        first = false;
     }
 }
 

@@ -2,47 +2,49 @@ use super::*;
 
 #[inline]
 pub fn add_b_f_rm (state: &mut CPU) -> u64 {
-    unimplemented!()
+    let arg  = state.next_u8();
+    let mode = (arg & B_MODE) >> 6;
+    let reg  = (arg & B_REG)  >> 3;
+    let mem  = (arg & B_MEM)  >> 0;
+    let src  = state.register_value_u8(reg);
+    let addr = state.memory_address(mode, mem);
+    let dst  = state.read_u8(addr);
+    let (result, unsigned_overflow) = dst.overflowing_add(src);
+    let (_, signed_overflow) = (dst as i8).overflowing_add(src as i8);
+    state.write_u8(addr, result);
+    state.set_pzs(result as u16);
+    state.set_cy(unsigned_overflow);
+    state.set_v(signed_overflow);
+    if addr % 2 == 0 {
+        7
+    } else {
+        11
+    }
 }
 
 #[inline]
 pub fn add_w_f_rm (state: &mut CPU) -> u64 {
-    let target   = state.next_u8();
-    let mode     = (target & B_MODE) >> 6;
-    let register = (target & B_REG)  >> 3;
-    let memory   = (target & B_MEM)  >> 0;
-    let source = match register {
-        0b000 => state.aw,
-        0b001 => state.cw,
-        0b010 => state.dw,
-        0b011 => state.bw,
-        0b100 => state.sp,
-        0b101 => state.bp,
-        0b110 => state.ix,
-        0b111 => state.iy,
-        _ => unreachable!(),
-    };
+    let arg  = state.next_u8();
+    let mode = (arg & B_MODE) >> 6;
+    let reg  = (arg & B_REG)  >> 3;
+    let mem  = (arg & B_MEM)  >> 0;
+    let src  = state.register_value_u16(reg);
     match mode {
-        0b00 => match memory {
+        0b00 => match mem {
             0b000 => unimplemented!(),
             0b001 => unimplemented!(),
             0b010 => unimplemented!(),
             0b011 => unimplemented!(),
             0b100 => unimplemented!(),
             0b101 => {
-                state.memory[state.iy as usize]     += (source & 0xff) as u8;
-                state.memory[state.iy as usize + 1] += (source >> 8) as u8;
-                match state.iy % 2 {
-                    0 => 7,
-                    1 => 11,
-                    _ => unreachable!()
-                }
+                state.write_u16(state.iy(), src);
+                if state.iy % 2 == 0 { 7 } else { 11 }
             },
             0b110 => unimplemented!(),
             0b111 => unimplemented!(),
             _ => unreachable!(),
         },
-        0b01 => match memory {
+        0b01 => match mem {
             0b000 => unimplemented!(),
             0b001 => unimplemented!(),
             0b010 => unimplemented!(),
@@ -53,7 +55,7 @@ pub fn add_w_f_rm (state: &mut CPU) -> u64 {
             0b111 => unimplemented!(),
             _ => unreachable!(),
         },
-        0b10 => match memory {
+        0b10 => match mem {
             0b000 => unimplemented!(),
             0b001 => unimplemented!(),
             0b010 => unimplemented!(),
@@ -112,8 +114,8 @@ pub fn sub_w_t_rm (state: &mut CPU) -> u64 {
     let arg  = state.next_u8();
     let mode = (arg & 0b11000000) >> 6;
     if mode == 0b11 {
-        let src = word_register_value(state, arg & B_MEM);
-        let dst = word_register_reference(state, (arg & B_REG) >> 3);
+        let src = state.register_value_u16(arg & B_MEM);
+        let dst = state.register_reference_u16((arg & B_REG) >> 3);
         let (result, unsigned_overflow) = (*dst).overflowing_sub(src);
         let (_, signed_overflow) = (*dst as i16).overflowing_sub(src as i16);
         *dst = result;
@@ -122,9 +124,9 @@ pub fn sub_w_t_rm (state: &mut CPU) -> u64 {
         state.set_v(signed_overflow);
         2
     } else {
-        let addr = memory_address(state, mode, arg & B_MEM) as usize;
-        let src  = u16::from_le_bytes([state.memory[addr], state.memory[addr + 1]]);
-        let dst  = word_register_reference(state, (arg & B_REG) >> 3);
+        let addr = state.memory_address(mode, arg & B_MEM);
+        let src  = state.read_u16(addr);
+        let dst  = state.register_reference_u16((arg & B_REG) >> 3);
         let (result, unsigned_overflow) = (*dst).overflowing_sub(src);
         let (_, signed_overflow) = (*dst as i16).overflowing_sub(src as i16);
         *dst = result;
