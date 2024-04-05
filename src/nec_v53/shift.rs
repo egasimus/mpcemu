@@ -3,8 +3,8 @@ use super::*;
 #[inline]
 pub fn shift_w (state: &mut CPU) -> u64 {
     let arg = state.next_u8();
-    let source = get_source_word(state, arg);
     let code = (arg & B_REG) >> 3;
+    let source = get_source_word(state, arg);
     match code {
         0b000 => {
             unimplemented!("rol");

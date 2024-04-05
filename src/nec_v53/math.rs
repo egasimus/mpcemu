@@ -140,3 +140,29 @@ pub fn sub_w_t_rm (state: &mut CPU) -> u64 {
         }
     }
 }
+
+#[inline]
+pub fn xor_w_to_reg (state: &mut CPU) -> u64 {
+    let arg  = state.next_u8();
+    let mode = (arg & 0b11000000) >> 6;
+    if mode == 0b11 {
+        let src = state.register_value_u16(arg & B_MEM);
+        let dst = state.register_reference_u16((arg & B_REG) >> 3);
+        let result = *dst ^ src;
+        *dst = result;
+        state.set_pzs(result);
+        2
+    } else {
+        let addr = state.memory_address(mode, arg & B_MEM);
+        let src  = state.read_u16(addr);
+        let dst  = state.register_reference_u16((arg & B_REG) >> 3);
+        let result = *dst ^ src;
+        *dst = result;
+        state.set_pzs(result);
+        if addr % 2 == 0 {
+            6
+        } else {
+            8
+        }
+    }
+}

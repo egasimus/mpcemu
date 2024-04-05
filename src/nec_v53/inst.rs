@@ -47,7 +47,7 @@ define_instruction_set! {
     [0x28, "SUB",   "b f rm",                                  unimplemented],
     [0x29, "SUB",   "w f rm",                                  unimplemented],
     [0x2A, "SUB",   "b t rm",                                  unimplemented],
-    [0x2B, "SUB",   "w t rm",                                  sub_w_t_rm],
+    [0x2B, "SUB",   "Subtract word into memory",               sub_w_t_rm],
     [0x2C, "SUB",   "b ia",                                    unimplemented],
     [0x2D, "SUB",   "w ia",                                    unimplemented],
     [0x2E, "PS:",   "Set segment override to program segment", ps],
@@ -56,7 +56,7 @@ define_instruction_set! {
     [0x30, "XOR",   "",                                       unimplemented],
     [0x31, "XOR",   "",                                       unimplemented],
     [0x32, "XOR",   "",                                       unimplemented],
-    [0x33, "XOR",   "",                                       unimplemented],
+    [0x33, "XOR",   "Word XOR into register",                 xor_w_to_reg],
     [0x34, "XOR",   "",                                       unimplemented],
     [0x35, "XOR",   "",                                       unimplemented],
     [0x36, "SS:",   "Set segment override to stack segment",  ss],
@@ -263,8 +263,8 @@ define_instruction_set! {
     [0xF3, "REP",     "Repeat next instruction until CW = 0",         rep],
     [0xF4, "HALT",    "",                                             unimplemented],
     [0xF5, "NOT1",    "",                                             unimplemented],
-    [0xF6, "GROUP1",  "",                                             unimplemented],
-    [0xF7, "GROUP1",  "",                                             unimplemented],
+    [0xF6, "GROUP1",  "",                                             group1_b],
+    [0xF7, "GROUP1",  "",                                             group1_w],
     [0xF8, "CLR1",    "Clear carry flag",                             clr1_cy],
     [0xF9, "SET1",    "Set carry flag",                               set1_cy],
     [0xFA, "DI",      "Reset IE flag and disable maskable interrupt", di],
@@ -369,6 +369,50 @@ fn bne (state: &mut CPU) -> u64 {
         3
     } else {
         6
+    }
+}
+
+fn group1_b (state: &mut CPU) -> u64 {
+    unimplemented!();
+}
+
+fn group1_w (state: &mut CPU) -> u64 {
+    let arg = state.next_u8();
+    let code = (arg & B_REG) >> 3;
+    match code {
+        0b000 => {
+            unimplemented!("test rm");
+        },
+        0b001 => {
+            panic!("undefined group1 instruction");
+        },
+        0b010 => {
+            unimplemented!("not rm");
+        },
+        0b011 => {
+            unimplemented!("neg rm");
+        },
+        0b100 => {
+            unimplemented!("mulu rm");
+        },
+        0b101 => {
+            unimplemented!("mul rm");
+        },
+        0b110 => {
+            unimplemented!("divu rm");
+        },
+        0b111 => {
+            let mode = (arg & 0b11000000) >> 6;
+            if mode == 0b11 {
+                unimplemented!();
+            } else {
+                unimplemented!();
+            }
+            unimplemented!("div rm");
+        },
+        _ => {
+            unreachable!("group1 code {code:b}");
+        }
     }
 }
 
