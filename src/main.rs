@@ -1,33 +1,56 @@
 mod nec_v53;
+
 fn main () -> Result<(), Box<dyn std::error::Error>> {
     let bin = std::fs::read("./data/mpc3000-v3.12.bin")?;
     let mut memory = vec![];
     memory.extend_from_slice(&bin);
     memory.extend_from_slice(&bin);
     let mut cpu = nec_v53::CPU::new(memory);
-    for i in 0..0x4000 {
-        print!("\n {:8X}", i * 0x20);
-        for j in 0..32 {
-            print!(" {:02x}", cpu.memory()[i * 0x20 + j]);
-        }
-    }
+    //for i in 0..0x4000 {
+        //print!("\n{:6X}|", i * 0x20);
+        //for j in 0..16 {
+            //print!(" {:02x}", cpu.memory()[i * 0x20 + j]);
+        //}
+        //print!(" |");
+        //for j in 16..32 {
+            //print!(" {:02x}", cpu.memory()[i * 0x20 + j]);
+        //}
+    //}
     let mut first: bool = true;
-    let mut last_address: usize = cpu.address();
+    let mut last_address: usize = cpu.program_address();
     let mut last_opcode:  u8    = 0;
     let mut last_clock:   u64   = cpu.clock;
-    println!("\n\nRunning from {:x}:", cpu.address());
+    println!("\n\nRunning from {:x}:", cpu.program_address());
     loop {
         let clock   = cpu.clock;
-        let address = cpu.address();
+        let address = cpu.program_address();
         cpu.step();
         let opcode  = cpu.opcode();
         let name    = nec_v53::get_instruction_name(opcode);
         let info    = nec_v53::get_instruction_description(opcode);
         if first || last_address != address {
-            print!("\n{last_clock:10}  {address:05X}  {opcode:02x}  {name:10}  {info}");
+            print!("\n\n{last_clock:10} {address:05X}  {opcode:02X}  {name:10}  {info}");
+            print!("\n           AW={:04X} BW={:04X} CW={:04X} DW={:04X} PS={:04X} SS={:04X} DS0={:04X} DS1={:04X} IX={:04X} IY={:04X}",
+                cpu.aw(), cpu.bw(), cpu.cw(), cpu.dw(),
+                cpu.ps(), cpu.ss(), cpu.ds0(), cpu.ds1(),
+                cpu.ix(), cpu.iy());
         } else {
             print!(".")
         }
+        //if clock > 300000 {
+            //println!();
+            //for i in 1..4 {
+                //print!("\n{:6X}|", i * 0x20);
+                //for j in 0..16 {
+                    //print!(" {:02x}", cpu.memory()[i * 0x20 + j]);
+                //}
+                //print!(" |");
+                //for j in 16..32 {
+                    //print!(" {:02x}", cpu.memory()[i * 0x20 + j]);
+                //}
+            //}
+            //println!();
+        //}
         last_address = address;
         last_opcode  = opcode;
         last_clock   = cpu.clock;

@@ -150,7 +150,7 @@ define_instruction_set! {
     [0x89, "MOV",  "Move word to memory from register",         mov_w_from_reg_to_mem],
     [0x8A, "MOV",  "Move byte to register from memory",         unimplemented],
     [0x8B, "MOV",  "Move word to register from memory",         mov_w_to_reg],
-    [0x8C, "MOV",  "from sreg, rm",                             mov_w_from_sreg],
+    [0x8C, "MOV",  "Move word to memory from segment register", mov_w_from_sreg],
     [0x8D, "LDEA", "",                                          unimplemented],
     [0x8E, "MOV",  "Move word to segment register from memory", mov_w_to_sreg],
     [0x8F, "POP",  "rm",                                        unimplemented],
@@ -431,14 +431,15 @@ mod group3 {
         let addr = state.next_u8() as usize;
         //panic!("{addr} {:x?}", &state.memory[addr*4..addr*4+4]);
         state.pc = u16::from_le_bytes([
-            state.memory[addr as usize * 4 + 0],
-            state.memory[addr as usize * 4 + 1],
+            state.get_byte(addr as usize * 4 + 0),
+            state.get_byte(addr as usize * 4 + 1),
         ]);
         state.ps = u16::from_le_bytes([
-            state.memory[addr as usize * 4 + 2],
-            state.memory[addr as usize * 4 + 3],
+            state.get_byte(addr as usize * 4 + 2),
+            state.get_byte(addr as usize * 4 + 3),
         ]);
-        println!("\n==========BRKXA {:x} {:x} {:x} {:x}", addr, state.pc, state.ps, state.address());
+        state.set_xa(true);
+        println!("\n==========BRKXA {:x} {:x} {:x} {:x}", addr, state.pc, state.ps, state.program_address());
         // TODO: set XA (internal I/O address: FF80H)
         12
     }
@@ -452,13 +453,14 @@ mod group3 {
     fn retxa (state: &mut CPU) -> u64 {
         let addr = state.next_u8();
         state.pc = u16::from_le_bytes([
-            state.memory[addr as usize * 4 + 0],
-            state.memory[addr as usize * 4 + 1],
+            state.get_byte(addr as usize * 4 + 0),
+            state.get_byte(addr as usize * 4 + 1),
         ]);
         state.ps = u16::from_le_bytes([
-            state.memory[addr as usize * 4 + 2],
-            state.memory[addr as usize * 4 + 3],
+            state.get_byte(addr as usize * 4 + 2),
+            state.get_byte(addr as usize * 4 + 3),
         ]);
+        state.set_xa(false);
         // TODO: reset XA
         12
     }

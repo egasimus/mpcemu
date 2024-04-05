@@ -13,116 +13,192 @@ pub enum Segment {
 }
 
 impl CPU {
+
     /// Read-only handle to memory
     pub fn memory (&self) -> &[u8] {
         &self.memory
     }
+
+    /// Read-only handle to extended memory
+    pub fn extended (&self) -> &[u8] {
+        &self.extended
+    }
+
+    /// Read-only handle to IO ports memory
+    pub fn ports (&self) -> &[u8] {
+        &self.ports
+    }
+
+    /// Read-only handle to internal IO memory
+    pub fn internal (&self) -> &[u8] {
+        &self.internal
+    }
+
+    pub fn xa (&self) -> bool {
+        self.ports[0xff80] > 0
+    }
+
+    pub fn set_xa (&mut self, value: bool) {
+        self.ports[0xff80] = if value { 1 } else { 0 };
+    }
+
+    pub fn get_byte (&self, addr: usize) -> u8 {
+        if addr < 0xA0000 {
+            if self.xa() {
+                self.extended[addr]
+            } else {
+                self.memory[addr]
+            }
+        } else {
+            self.memory[addr]
+        }
+    }
+
+    pub fn set_byte (&mut self, addr: usize, value: u8) {
+        if addr < 0xA0000 {
+            if self.xa() {
+                self.extended[addr] = value
+            } else {
+                self.memory[addr] = value
+            }
+        } else {
+            self.memory[addr] = value
+        }
+    }
+
+    /// Program address
+    pub fn program_address (&self) -> usize {
+        (((self.ps as u32) * 0x10) + self.pc as u32) as usize
+    }
+
     /// Effective address
-    pub fn ea (&self, addr: u16) -> usize {
-        ((match self.segment {
+    pub fn effective_address (&self, addr: u16) -> usize {
+        let segment = match self.segment {
             None               => self.ds0,
             Some(Segment::DS0) => self.ds0,
             Some(Segment::DS1) => self.ds1,
             Some(Segment::PS)  => self.ps,
             Some(Segment::SS)  => self.ss
-        } as u32 * 0x10) + addr as u32) as usize
+        } as u32 * 0x10;
+
+        (segment + addr as u32) as usize
     }
-    /// Program address
-    pub fn address (&self) -> usize {
-        (((self.ps as u32) * 0x10) + self.pc as u32) as usize
+
+    /// Target address (always offset from DS1)
+    pub fn ds1_address (&self, addr: u16) -> usize {
+        ((self.ds1 as u32 * 0x10) + addr as u32) as usize
     }
+
     pub fn peek_u8 (&mut self) -> u8 {
-        self.memory[self.address()]
+        self.get_byte(self.program_address())
     }
+
     pub fn peek_i8 (&mut self) -> i8 {
-        self.memory[self.address()] as i8
+        self.get_byte(self.program_address()) as i8
     }
+
     pub fn next_u8 (&mut self) -> u8 {
         let byte = self.peek_u8();
         self.pc += 1;
         byte
     }
+
     pub fn next_i8 (&mut self) -> i8 {
         let byte = self.peek_i8();
         self.pc += 1;
         byte
     }
+
     pub fn next_u16 (&mut self) -> u16 {
         let lo = self.next_u8() as u16;
         let hi = self.next_u8() as u16;
         hi << 8 | lo
     }
+
     pub fn next_i16 (&mut self) -> i16 {
         let lo = self.next_u8();
         let hi = self.next_u8();
         i16::from_le_bytes([lo, hi])
     }
+
     /// Read byte from effective address
     pub fn read_u8 (&mut self, addr: u16) -> u8 {
-        self.memory[self.ea(addr)]
+        self.get_byte(self.effective_address(addr))
     }
+
     /// Read word from effective address
     pub fn read_u16 (&mut self, addr: u16) -> u16 {
         let lo = self.read_u8(addr);
         let hi = self.read_u8(addr + 1);
         u16::from_le_bytes([lo, hi])
     }
+
     /// Write byte to effective address
     pub fn write_u8 (&mut self, addr: u16, value: u8) {
-        let ea = self.ea(addr);
-        self.memory[ea] = value;
+        let ea = self.effective_address(addr);
+        self.set_byte(ea, value);
     }
+
     /// Write word to effective address
     pub fn write_u16 (&mut self, addr: u16, value: u16) {
-        let ea = self.ea(addr);
+        let ea = self.effective_address(addr);
         let [lo, hi] = value.to_le_bytes();
-        self.memory[ea + 0] = lo;
-        self.memory[ea + 1] = hi;
+        self.set_byte(ea + 0, lo);
+        self.set_byte(ea + 1, hi);
     }
+
     /// Read byte from input port
     pub fn input_u8 (&self, addr: u16) -> u8 {
         self.ports[addr as usize]
     }
+
     /// Read word from input port
     pub fn input_u16 (&self, addr: u16) -> u16 {
         let lo = self.input_u8(addr) as u16;
         let hi = self.input_u8(addr + 1) as u16;
         hi << 8 | lo
     }
+
     /// Write byte to input port
     pub fn output_u8 (&mut self, addr: u16, data: u8) {
         self.ports[addr as usize] = data;
     }
+
     /// Write byte to output port
     pub fn output_u16 (&mut self, addr: u16, data: u16) {
         let [lo, hi] = data.to_le_bytes();
         self.output_u8(addr + 0, lo);
         self.output_u8(addr + 1, hi);
     }
+
     /// Push a byte to the stack
     pub fn push_u8 (&mut self, data: u8) {
         if self.sp < 1 {
             panic!("stack overflow")
         }
         self.sp = self.sp - 1;
-        self.memory[self.sp as usize] = data;
+        self.set_byte(self.sp as usize, data);
     }
+
     /// Push a word to the stack
     pub fn push_u16 (&mut self, data: u16) {
         let [lo, hi] = data.to_le_bytes();
         self.push_u8(lo);
         self.push_u8(hi);
     }
+
     pub fn pop_u8 (&mut self) -> u8 {
-        let data = self.memory[self.sp as usize];
+        let data = self.get_byte(self.sp as usize);
         self.sp = self.sp + 1;
         data
     }
+
     pub fn pop_u16 (&mut self) -> u16 {
         let lo = self.pop_u8() as u16;
         let hi = self.pop_u8() as u16;
         hi << 8 | lo
     }
+
 }
 
 #[inline]
@@ -288,9 +364,9 @@ pub fn mov_mw_imm (state: &mut CPU) -> u64 {
 #[inline]
 pub fn movbk_w (state: &mut CPU) -> u64 {
     let dst = state.ds1() as u32 * 0x10 + state.iy() as u32;
-    let src = state.ea(state.ix());
-    state.memory[dst as usize + 0] = state.memory[src as usize + 0];
-    state.memory[dst as usize + 1] = state.memory[src as usize + 1];
+    let src = state.effective_address(state.ix());
+    state.set_byte(dst as usize + 0, state.get_byte(src as usize + 0));
+    state.set_byte(dst as usize + 1, state.get_byte(src as usize + 1));
     if state.dir() {
         state.set_ix(state.ix() - 2);
         state.set_iy(state.iy() - 2);
@@ -454,11 +530,7 @@ pub fn mov_w_to_sreg (state: &mut CPU) -> u64 {
 #[inline]
 pub fn mov_ds1_aw (state: &mut CPU) -> u64 {
     state.ds1 = state.aw;
-    match state.aw % 2 {
-        0 => 10,
-        1 => 14,
-        _ => unreachable!()
-    }
+    if state.aw % 2 == 0 { 10 } else { 14 }
 }
 
 #[inline]
@@ -468,19 +540,16 @@ pub fn mov_ds0_aw (state: &mut CPU) -> u64 {
 
 #[inline]
 pub fn stm_w (state: &mut CPU) -> u64 {
-    let iy = state.iy();
-    let aw = state.aw();
-    state.write_u16(iy, aw);
+    let iy   = state.iy();
+    let addr = state.ds1_address(iy);
+    let aw   = state.aw();
+    state.write_u16(addr as u16, aw);
     state.set_iy(if state.dir() {
         iy.overflowing_sub(2).0
     } else {
         iy.overflowing_add(2).0
     });
-    if iy % 2 == 0 {
-        5
-    } else {
-        3
-    }
+    if iy % 2 == 0 { 3 } else { 5 }
 }
 
 #[inline]

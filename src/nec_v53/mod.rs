@@ -20,36 +20,49 @@ pub use self::{
 };
 
 pub struct CPU {
-    memory: Vec<u8>,
-    pub clock: u64,
-    pub ports: [u8;65536],
-    pub internal: [u8;256],
+    memory:   [u8;0x100000],
+    extended: [u8;0xA0000],
+    ports:    [u8;0x10000],
+    internal: [u8;0x100],
+
     aw:  u16,
     bw:  u16,
     cw:  u16,
     dw:  u16,
+
     ps:  u16,
     ss:  u16,
     ds0: u16,
     ds1: u16,
+
     sp:  u16,
     bp:  u16,
     pc:  u16,
     psw: u16,
+
     ix:  u16,
     iy:  u16,
+
     pub segment: Option<Segment>,
     opcode: u8,
+    pub clock: u64,
 }
 
 impl CPU {
 
-    pub fn new (memory: Vec<u8>) -> Self {
+    pub fn new (image: Vec<u8>) -> Self {
+        let mut memory = [0x00;0x100000];
+        if image.len() > memory.len() {
+            panic!("Memory image too big (0x{:X}/0x{:X} bytes)", image.len(), memory.len());
+        }
+        for i in 0..image.len() {
+            memory[i] = image[i];
+        }
         Self {
             memory,
-            clock:    0x0000,
-            ports:    [0x00;65536],
-            internal: [0x00;256],
+            extended: [0x00;0xA0000],
+            ports:    [0x00;0x10000],
+            internal: [0x00;0x100],
             aw:       0x0000,
             bw:       0x0000,
             cw:       0x0000,
@@ -65,7 +78,8 @@ impl CPU {
             ix:       0x0000,
             iy:       0x0000,
             segment:  None,
-            opcode:   0xF1
+            opcode:   0xF1,
+            clock:    0x0000,
         }
     }
 
