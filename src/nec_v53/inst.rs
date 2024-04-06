@@ -8,8 +8,8 @@ define_instruction_set! {
     [0x03, "ADD",      "Add word to register from memory",      add_w_t_rm],
     [0x04, "ADD",      "Add byte to accumulator from constant", add_b_ia],
     [0x05, "ADD",      "Add word to accumulator from constant", add_w_ia],
-    [0x06, "PUSH DS1", "",                                      unimplemented],
-    [0x07, "POP DS1",  "",                                      unimplemented],
+    [0x06, "PUSH DS1", "Push value of DS1 register to stack",   push_ds1],
+    [0x07, "POP DS1",  "Pop value of DS1 register from stack",  pop_ds1],
     [0x08, "OR",       "",                                      unimplemented],
     [0x09, "OR",       "",                                      unimplemented],
     [0x0A, "OR",       "",                                      unimplemented],
@@ -46,7 +46,7 @@ define_instruction_set! {
     [0x27, "ADJ4A", "",                                        unimplemented],
     [0x28, "SUB",   "b f rm",                                  unimplemented],
     [0x29, "SUB",   "w f rm",                                  unimplemented],
-    [0x2A, "SUB",   "b t rm",                                  unimplemented],
+    [0x2A, "SUB",   "Subtract byte into memory",               sub_b_t_rm],
     [0x2B, "SUB",   "Subtract word into memory",               sub_w_t_rm],
     [0x2C, "SUB",   "b ia",                                    unimplemented],
     [0x2D, "SUB",   "w ia",                                    unimplemented],
@@ -61,10 +61,10 @@ define_instruction_set! {
     [0x35, "XOR",   "",                                       unimplemented],
     [0x36, "SS:",   "Set segment override to stack segment",  ss],
     [0x37, "ADJBA", "",                                       unimplemented],
-    [0x38, "CMP",   "b f rm",                                 unimplemented],
-    [0x39, "CMP",   "w f rm",                                 unimplemented],
-    [0x3A, "CMP",   "b t rm",                                 unimplemented],
-    [0x3B, "CMP",   "w t rm",                                 unimplemented],
+    [0x38, "CMP",   "Compare memory with byte",               cmp_b_f_rm],
+    [0x39, "CMP",   "Compare memory with word",               unimplemented],
+    [0x3A, "CMP",   "Compare byte with memory",               unimplemented],
+    [0x3B, "CMP",   "Compare word with memory",               cmp_w_t_rm],
     [0x3C, "CMP",   "b, ia",                                  unimplemented],
     [0x3D, "CMP",   "w, ia",                                  cmp_aw_imm],
     [0x3E, "DS0:",  "Set segment override to data segment 0", ds0],
@@ -87,14 +87,14 @@ define_instruction_set! {
     [0x4E, "DEC IX", "Decrement IX by 1", dec_ix],
     [0x4F, "DEC IY", "Decrement IY by 1", dec_iy],
 
-    [0x50, "PUSH AW", "", unimplemented],
-    [0x51, "PUSH CW", "", unimplemented],
-    [0x52, "PUSH DW", "", unimplemented],
-    [0x53, "PUSH BW", "", unimplemented],
+    [0x50, "PUSH AW", "Push value of AW register to stack", push_aw],
+    [0x51, "PUSH CW", "Push value of CW register to stack", push_cw],
+    [0x52, "PUSH DW", "Push value of DW register to stack", push_dw],
+    [0x53, "PUSH BW", "Push value of BW register to stack", push_bw],
     [0x54, "PUSH SP", "", unimplemented],
     [0x55, "PUSH BP", "", unimplemented],
-    [0x56, "PUSH IX", "", unimplemented],
-    [0x57, "PUSH IY", "", unimplemented],
+    [0x56, "PUSH IX", "Push value of IX register to stack", push_ix],
+    [0x57, "PUSH IY", "Push value of IY register to stack", push_iy],
     [0x58, "POP AW",  "", unimplemented],
     [0x59, "POP CW",  "", unimplemented],
     [0x5A, "POP DW",  "", unimplemented],
@@ -123,10 +123,10 @@ define_instruction_set! {
 
     [0x70, "BV",  "", unimplemented],
     [0x71, "BNV", "", unimplemented],
-    [0x72, "BC",  "", unimplemented],
-    [0x73, "BNC", "", unimplemented],
-    [0x74, "BE",  "Branch if Z flag is 1", be],
-    [0x75, "BNE", "Branch if Z flag is 0", bne],
+    [0x72, "BC",  "Bracnh if CY flag is 1", unimplemented],
+    [0x73, "BNC", "Branch if CY flag is 0", bnc],
+    [0x74, "BE",  "Branch if Z flag is 1",  be],
+    [0x75, "BNE", "Branch if Z flag is 0",  bne],
     [0x76, "BNH", "", unimplemented],
     [0x77, "BH",  "", unimplemented],
     [0x78, "BN",  "", unimplemented],
@@ -251,7 +251,7 @@ define_instruction_set! {
     [0xE8, "CALL",  "Call direct address",                 call_d],
     [0xE9, "BR",    "Branch near",                         br_near],
     [0xEA, "BR",    "Branch far",                          br_far],
-    [0xEB, "BR",    "Branch si, direct address",           unimplemented],
+    [0xEB, "BR",    "Branch short",                        br_short],
     [0xEC, "IN",    "b, v",                                in_b_v],
     [0xED, "IN",    "w, v",                                in_w_v],
     [0xEE, "OUT",   "b, v",                                out_b_v],
@@ -318,6 +318,13 @@ fn br_far (state: &mut CPU) -> u64 {
 }
 
 #[inline]
+fn br_short (state: &mut CPU) -> u64 {
+    let displace = state.next_i8();
+    state.jump_i8(displace);
+    7
+}
+
+#[inline]
 /// IE ← 0
 fn di (state: &mut CPU) -> u64 {
     state.set_ie(false);
@@ -354,9 +361,9 @@ fn bcwz (state: &mut CPU) -> u64 {
 fn be (state: &mut CPU) -> u64 {
     let displace = state.next_i8();
     if state.z() {
+        state.jump_i8(displace);
         6
     } else {
-        state.jump_i8(displace);
         3
     }
 }
@@ -364,11 +371,33 @@ fn be (state: &mut CPU) -> u64 {
 #[inline]
 fn bne (state: &mut CPU) -> u64 {
     let displace = state.next_i8();
-    if state.z() {
+    if !state.z() {
         state.jump_i8(displace);
-        3
-    } else {
         6
+    } else {
+        3
+    }
+}
+
+#[inline]
+fn bc (state: &mut CPU) -> u64 {
+    let displace = state.next_i8();
+    if state.cy() {
+        state.jump_i8(displace);
+        6
+    } else {
+        3
+    }
+}
+
+#[inline]
+fn bnc (state: &mut CPU) -> u64 {
+    let displace = state.next_i8();
+    if !state.cy() {
+        state.jump_i8(displace);
+        6
+    } else {
+        3
     }
 }
 
@@ -402,13 +431,29 @@ fn group1_w (state: &mut CPU) -> u64 {
             unimplemented!("divu rm");
         },
         0b111 => {
+            let [b0, b1] = state.dw().to_le_bytes();
+            let [b2, b3] = state.aw().to_le_bytes();
+            let t = i32::from_le_bytes([b0, b1, b2, b3]);
             let mode = (arg & 0b11000000) >> 6;
             if mode == 0b11 {
-                unimplemented!();
+                let dst = state.register_value_u16((arg & B_REG) >> 3) as i32;
+                if (((t / dst) > 0) && ((t / dst) <= 0x7FFF)) ||
+                   (((t / dst) < 0) && ((t / dst) > (0 - 0x7FFFF - 1)))
+                {
+                    state.set_dw((t % dst) as u16);
+                    state.set_aw((t / dst) as u16);
+                }
+                state.push_u16(state.psw());
+                state.set_ie(false);
+                state.set_brk(false);
+                //state.push_u16(state.ps());
+                //state.set_ps(u16::from_le_bytes([0x2, 0x3]));
+                //state.push_u16(state.pc());
+                //state.set_pc(u16::from_le_bytes([0x0, 0x1]));
+                24
             } else {
                 unimplemented!();
             }
-            unimplemented!("div rm");
         },
         _ => {
             unreachable!("group1 code {code:b}");
@@ -483,7 +528,7 @@ mod group3 {
             state.get_byte(addr as usize * 4 + 3),
         ]);
         state.set_xa(true);
-        println!("\n==========BRKXA {:x} {:x} {:x} {:x}", addr, state.pc, state.ps, state.program_address());
+        //println!("\n==========BRKXA {:x} {:x} {:x} {:x}", addr, state.pc, state.ps, state.program_address());
         // TODO: set XA (internal I/O address: FF80H)
         12
     }

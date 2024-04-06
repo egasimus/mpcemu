@@ -135,6 +135,20 @@ impl CPU {
         }
     }
 
+    pub fn set_register_u8 (&mut self, reg: u8, value: u8) {
+        match reg {
+            0b000 => self.set_al(value),
+            0b001 => self.set_cl(value),
+            0b010 => self.set_dl(value),
+            0b011 => self.set_bl(value),
+            0b100 => self.set_ah(value),
+            0b101 => self.set_ch(value),
+            0b110 => self.set_dh(value),
+            0b111 => self.set_bh(value),
+            _ => unreachable!(),
+        }
+    }
+
     pub fn register_reference_u16 (&mut self, reg: u8) -> &mut u16 {
         match reg {
             0b000 => &mut self.aw,

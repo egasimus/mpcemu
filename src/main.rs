@@ -34,8 +34,12 @@ fn main () -> Result<(), Box<dyn std::error::Error>> {
                 cpu.aw(), cpu.bw(), cpu.cw(), cpu.dw(),
                 cpu.ps(), cpu.ss(), cpu.ds0(), cpu.ds1(),
                 cpu.ix(), cpu.iy());
+            print!("\n           V={} DIR={} IE={} BRK={} S={} Z={} AC={} P={} CY={}",
+                cpu.v() as u8, cpu.dir() as u8, cpu.ie() as u8, cpu.brk() as u8,
+                cpu.s() as u8, cpu.z() as u8, cpu.ac() as u8, cpu.p() as u8,
+                cpu.cy() as u8);
         } else {
-            print!(".")
+            //print!(".")
         }
         //if clock > 300000 {
             //println!();

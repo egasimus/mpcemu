@@ -61,6 +61,7 @@ macro_rules! define_general_purpose_register {
             let (result, unsigned_overflow) = value.overflowing_add(1);
             let (_, signed_overflow) = (value as i16).overflowing_add(1);
             state.$w_set(result);
+            state.set_pzs(result);
             state.set_cy(unsigned_overflow);
             state.set_v(signed_overflow);
             2
@@ -72,6 +73,7 @@ macro_rules! define_general_purpose_register {
             let (result, unsigned_overflow) = value.overflowing_sub(1);
             let (_, signed_overflow) = (value as i16).overflowing_sub(1);
             state.$w_set(result);
+            state.set_pzs(result);
             state.set_cy(unsigned_overflow);
             state.set_v(signed_overflow);
             2
@@ -165,6 +167,7 @@ macro_rules! define_special_register {
             let (result, unsigned_overflow) = value.overflowing_add(1);
             let (_, signed_overflow) = (value as i16).overflowing_add(1);
             state.$w_set(result);
+            state.set_pzs(result);
             state.set_cy(unsigned_overflow);
             state.set_v(signed_overflow);
             2
@@ -176,6 +179,7 @@ macro_rules! define_special_register {
             let (result, unsigned_overflow) = value.overflowing_sub(1);
             let (_, signed_overflow) = (value as i16).overflowing_sub(1);
             state.$w_set(result);
+            state.set_pzs(result);
             state.set_cy(unsigned_overflow);
             state.set_v(signed_overflow);
             2

@@ -142,6 +142,100 @@ pub fn sub_w_t_rm (state: &mut CPU) -> u64 {
 }
 
 #[inline]
+pub fn cmp_b_f_rm (state: &mut CPU) -> u64 {
+    let arg  = state.next_u8();
+    let mode = (arg & 0b11000000) >> 6;
+    if mode == 0b11 {
+        let src = state.register_value_u8((arg & B_REG) >> 3);
+        let dst = state.register_value_u8(arg & B_MEM);
+        let (result, unsigned_overflow) = dst.overflowing_sub(src);
+        let (_, signed_overflow) = (dst as i8).overflowing_sub(src as i8);
+        state.set_pzs(result as u16);
+        state.set_cy(unsigned_overflow);
+        state.set_v(signed_overflow);
+        2
+    } else {
+        let src  = state.register_value_u8((arg & B_REG) >> 3);
+        let addr = state.memory_address(mode, arg & B_MEM);
+        let dst  = state.read_u8(addr);
+        let (result, unsigned_overflow) = dst.overflowing_sub(src);
+        let (_, signed_overflow) = (dst as i8).overflowing_sub(src as i8);
+        state.set_pzs(result as u16);
+        state.set_cy(unsigned_overflow);
+        state.set_v(signed_overflow);
+        if addr % 2 == 0 {
+            6
+        } else {
+            8
+        }
+    }
+}
+
+#[inline]
+pub fn cmp_w_t_rm (state: &mut CPU) -> u64 {
+    let arg  = state.next_u8();
+    let mode = (arg & 0b11000000) >> 6;
+    if mode == 0b11 {
+        let src = state.register_value_u16(arg & B_MEM);
+        let dst = state.register_reference_u16((arg & B_REG) >> 3);
+        let (result, unsigned_overflow) = (*dst).overflowing_sub(src);
+        let (_, signed_overflow) = (*dst as i16).overflowing_sub(src as i16);
+        state.set_pzs(result);
+        state.set_cy(unsigned_overflow);
+        state.set_v(signed_overflow);
+        2
+    } else {
+        let addr = state.memory_address(mode, arg & B_MEM);
+        let src  = state.read_u16(addr);
+        let dst  = state.register_reference_u16((arg & B_REG) >> 3);
+        let (result, unsigned_overflow) = (*dst).overflowing_sub(src);
+        let (_, signed_overflow) = (*dst as i16).overflowing_sub(src as i16);
+        state.set_pzs(result);
+        state.set_cy(unsigned_overflow);
+        state.set_v(signed_overflow);
+        if addr % 2 == 0 {
+            6
+        } else {
+            8
+        }
+    }
+}
+
+#[inline]
+pub fn sub_b_t_rm (state: &mut CPU) -> u64 {
+    let arg  = state.next_u8();
+    let mode = (arg & 0b11000000) >> 6;
+    if mode == 0b11 {
+        let src = state.register_value_u8(arg & B_MEM);
+        let reg = (arg & B_REG) >> 3;
+        let dst = state.register_value_u8(reg);
+        let (result, unsigned_overflow) = dst.overflowing_sub(src);
+        let (_, signed_overflow) = (dst as i8).overflowing_sub(src as i8);
+        state.set_register_u8(reg, result);
+        state.set_pzs(result as u16);
+        state.set_cy(unsigned_overflow);
+        state.set_v(signed_overflow);
+        2
+    } else {
+        let addr = state.memory_address(mode, arg & B_MEM);
+        let src  = state.read_u8(addr);
+        let reg  = (arg & B_REG) >> 3;
+        let dst  = state.register_value_u8(reg);
+        let (result, unsigned_overflow) = dst.overflowing_sub(src);
+        let (_, signed_overflow) = (dst as i8).overflowing_sub(src as i8);
+        state.set_register_u8(reg, result);
+        state.set_pzs(result as u16);
+        state.set_cy(unsigned_overflow);
+        state.set_v(signed_overflow);
+        if addr % 2 == 0 {
+            6
+        } else {
+            8
+        }
+    }
+}
+
+#[inline]
 pub fn xor_w_to_reg (state: &mut CPU) -> u64 {
     let arg  = state.next_u8();
     let mode = (arg & 0b11000000) >> 6;
