@@ -33,7 +33,7 @@ define_instruction_set! {
     [0x1B, "SUBC",     "", unimplemented],
     [0x1C, "SUBC",     "", unimplemented],
     [0x1D, "SUBC",     "", unimplemented],
-    [0x1E, "PUSH DS0", "", unimplemented],
+    [0x1E, "PUSH DS0", "", push_ds0],
     [0x1F, "POP DS0",  "", unimplemented],
 
     [0x20, "AND",   "",                                        unimplemented],
@@ -182,7 +182,7 @@ define_instruction_set! {
     [0xA7, "CMPBK",  "",                                            unimplemented],
     [0xA8, "TEST",   "",                                            unimplemented],
     [0xA9, "TEST",   "",                                            unimplemented],
-    [0xAA, "STM",    "Store multiple bytes",                        unimplemented],
+    [0xAA, "STM",    "Store multiple bytes",                        stm_b],
     [0xAB, "STM",    "Store multiple words",                        stm_w],
     [0xAC, "LDM",    "b",                                           ldm_b],
     [0xAD, "LDM",    "w",                                           ldm_w],
@@ -483,8 +483,7 @@ fn group2_w (state: &mut CPU) -> u64 {
             unimplemented!("call regptr16/memptr16");
         },
         0b011 => {
-            let disp = state.next_u16() as i32;
-            let addr = state.memory_address(mode, mem) as i32 + disp;
+            let addr = state.memory_address(mode, mem) as i32;
             let pc = state.read_u16(addr as u16 + 0);
             let ps = state.read_u16(addr as u16 + 2);
             state.set_sp(state.sp() - 2);

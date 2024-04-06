@@ -41,17 +41,17 @@ fn main () -> Result<(), Box<dyn std::error::Error>> {
         } else {
             //print!(".")
         }
-        //if clock > 300000 {
+        //if clock > 1800000 {
             //println!();
-            //for i in 1..4 {
-                //print!("\n{:6X}|", i * 0x20);
+            //for i in 0xF198..=0xF19A {
+                //print!("\n{:6X}|", i * 0x10);
                 //for j in 0..16 {
-                    //print!(" {:02x}", cpu.memory()[i * 0x20 + j]);
+                    //print!(" {:02x}", cpu.memory()[i * 0x10 + j]);
                 //}
-                //print!(" |");
-                //for j in 16..32 {
-                    //print!(" {:02x}", cpu.memory()[i * 0x20 + j]);
-                //}
+                ////print!(" |");
+                ////for j in 16..32 {
+                    ////print!(" {:02x}", cpu.memory()[i * 0x20 + j]);
+                ////}
             //}
             //println!();
         //}

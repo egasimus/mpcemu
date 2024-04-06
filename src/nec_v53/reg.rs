@@ -251,3 +251,64 @@ pub fn set1_dir (state: &mut CPU) -> u64 {
     state.set_dir(true);
     2
 }
+
+#[inline]
+pub fn push_ds0 (state: &mut CPU) -> u64 {
+    state.set_sp(state.sp() - 2);
+    state.write_u16(state.sp(), state.ds0());
+    if state.sp() % 2 == 0 { 5 } else { 9 }
+}
+
+#[inline]
+pub fn push_ds1 (state: &mut CPU) -> u64 {
+    state.set_sp(state.sp() - 2);
+    state.write_u16(state.sp(), state.ds1());
+    if state.sp() % 2 == 0 { 5 } else { 9 }
+}
+
+#[inline]
+pub fn push_aw (state: &mut CPU) -> u64 {
+    state.set_sp(state.sp() - 2);
+    state.write_u16(state.sp(), state.aw());
+    if state.sp() % 2 == 0 { 5 } else { 9 }
+}
+
+#[inline]
+pub fn push_bw (state: &mut CPU) -> u64 {
+    state.set_sp(state.sp() - 2);
+    state.write_u16(state.sp(), state.bw());
+    if state.sp() % 2 == 0 { 5 } else { 9 }
+}
+
+#[inline]
+pub fn push_cw (state: &mut CPU) -> u64 {
+    state.set_sp(state.sp() - 2);
+    state.write_u16(state.sp(), state.cw());
+    if state.sp() % 2 == 0 { 5 } else { 9 }
+}
+
+#[inline]
+pub fn push_dw (state: &mut CPU) -> u64 {
+    state.set_sp(state.sp() - 2);
+    state.write_u16(state.sp(), state.dw());
+    if state.sp() % 2 == 0 { 5 } else { 9 }
+}
+
+#[inline]
+pub fn push_ix (state: &mut CPU) -> u64 {
+    state.set_sp(state.sp() - 2);
+    state.write_u16(state.sp(), state.ix());
+    if state.sp() % 2 == 0 { 5 } else { 9 }
+}
+
+#[inline]
+pub fn push_iy (state: &mut CPU) -> u64 {
+    state.set_sp(state.sp() - 2);
+    state.write_u16(state.sp(), state.iy());
+    if state.sp() % 2 == 0 { 5 } else { 9 }
+}
+
+#[inline]
+pub fn pop_ds1 (state: &mut CPU) -> u64 {
+    unimplemented!()
+}
