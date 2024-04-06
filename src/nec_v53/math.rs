@@ -260,3 +260,68 @@ pub fn xor_w_to_reg (state: &mut CPU) -> u64 {
         }
     }
 }
+
+#[inline]
+pub fn imm_b (state: &mut CPU) -> u64 {
+    let arg  = state.next_u8();
+    let mode = (arg & B_MODE) >> 6;
+    let code = (arg & B_REG)  >> 3;
+    let mem  = (arg & B_MEM)  >> 0;
+    match code {
+        0b000 => {
+            unimplemented!("add");
+        },
+        0b001 => {
+            unimplemented!("or");
+        },
+        0b010 => {
+            unimplemented!("addc");
+        },
+        0b011 => {
+            unimplemented!("sub");
+        },
+        0b100 => {
+            unimplemented!("and");
+        },
+        0b101 => {
+            unimplemented!("sub");
+        },
+        0b110 => {
+            unimplemented!("xor");
+        },
+        0b111 => {
+            if mode == 0b11 {
+                unimplemented!("cmp reg, imm");
+                2
+            } else {
+                let addr = state.memory_address(mode, mem);
+                let dst = state.read_u8(addr);
+                let src = state.next_u8();
+                let (result, unsigned_overflow) = dst.overflowing_sub(src);
+                let (_, signed_overflow) = (dst as i8).overflowing_sub(src as i8);
+                state.set_pzs(result as u16);
+                state.set_cy(unsigned_overflow);
+                state.set_v(signed_overflow);
+                if addr % 2 == 0 { 6 } else { 8 }
+            }
+        },
+        _ => {
+            unreachable!("imm code {code:b}");
+        }
+    }
+}
+
+#[inline]
+pub fn imm_w (state: &mut CPU) -> u64 {
+    unimplemented!();
+}
+
+#[inline]
+pub fn imm_b_s (state: &mut CPU) -> u64 {
+    unimplemented!();
+}
+
+#[inline]
+pub fn imm_w_s (state: &mut CPU) -> u64 {
+    unimplemented!();
+}

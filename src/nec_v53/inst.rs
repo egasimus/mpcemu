@@ -138,10 +138,10 @@ define_instruction_set! {
     [0x7E, "BLE", "", unimplemented],
     [0x7F, "BGT", "", unimplemented],
 
-    [0x80, "IMM",  "",                                          unimplemented],
-    [0x81, "IMM",  "",                                          unimplemented],
-    [0x82, "IMM",  "",                                          unimplemented],
-    [0x83, "IMM",  "",                                          unimplemented],
+    [0x80, "IMM",  "",                                          imm_b],
+    [0x81, "IMM",  "",                                          imm_w],
+    [0x82, "IMM",  "",                                          imm_b_s],
+    [0x83, "IMM",  "",                                          imm_w_s],
     [0x84, "TEST", "",                                          unimplemented],
     [0x85, "TEST", "",                                          unimplemented],
     [0x86, "XCH",  "",                                          unimplemented],
@@ -271,8 +271,8 @@ define_instruction_set! {
     [0xFB, "EI",      "Set IE flag and enable maskable interrupt",    unimplemented],
     [0xFC, "CLR1",    "Clear direction flag",                         clr1_dir],
     [0xFD, "SET1",    "Set direction flag",                           set1_dir],
-    [0xFE, "GROUP2",  "",                                             unimplemented],
-    [0xFF, "GROUP2",  "",                                             unimplemented],
+    [0xFE, "GROUP2",  "",                                             group2_b],
+    [0xFF, "GROUP2",  "",                                             group2_w],
 
 }
 
@@ -457,6 +457,58 @@ fn group1_w (state: &mut CPU) -> u64 {
         },
         _ => {
             unreachable!("group1 code {code:b}");
+        }
+    }
+}
+
+#[inline]
+fn group2_b (state: &mut CPU) -> u64 {
+    unimplemented!();
+}
+
+#[inline]
+fn group2_w (state: &mut CPU) -> u64 {
+    let arg  = state.next_u8();
+    let mode = (arg & B_MODE) >> 6;
+    let code = (arg & B_REG)  >> 3;
+    let mem  = (arg & B_MEM)  >> 0;
+    match code {
+        0b000 => {
+            unimplemented!("inc");
+        },
+        0b001 => {
+            unimplemented!("dec");
+        },
+        0b010 => {
+            unimplemented!("call regptr16/memptr16");
+        },
+        0b011 => {
+            let disp = state.next_u16() as i32;
+            let addr = state.memory_address(mode, mem) as i32 + disp;
+            let pc = state.read_u16(addr as u16 + 0);
+            let ps = state.read_u16(addr as u16 + 2);
+            state.set_sp(state.sp() - 2);
+            state.write_u16(state.sp(), state.ps());
+            state.set_ps(ps);
+            state.set_sp(state.sp() - 2);
+            state.write_u16(state.sp(), state.pc());
+            state.set_pc(pc);
+            if addr % 2 == 0 { 15 } else { 23 }
+        },
+        0b100 => {
+            unimplemented!("br");
+        },
+        0b101 => {
+            unimplemented!("br");
+        },
+        0b110 => {
+            unimplemented!("push");
+        },
+        0b111 => {
+            panic!("undefined instruction 0b111")
+        },
+        _ => {
+            unreachable!("imm code {code:b}");
         }
     }
 }
