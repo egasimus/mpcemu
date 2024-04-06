@@ -354,7 +354,17 @@ pub fn mov_m_aw (state: &mut CPU) -> u64 {
 
 #[inline]
 pub fn mov_mb_imm (state: &mut CPU) -> u64 {
-    unimplemented!()
+    let arg  = state.next_u8();
+    let mode = (arg & B_MODE) >> 6;
+    let code = (arg & B_REG)  >> 3;
+    if code != 0b000 {
+        panic!();
+    }
+    let mem  = (arg & B_MEM)  >> 0;
+    let addr = state.memory_address(mode, mem);
+    let imm  = state.next_u8();
+    state.write_u8(addr, imm);
+    3
 }
 
 #[inline]

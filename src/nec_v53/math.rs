@@ -110,6 +110,32 @@ pub fn cmp_aw_imm (state: &mut CPU) -> u64 {
 }
 
 #[inline]
+pub fn or_w_t_rm (state: &mut CPU) -> u64 {
+    let arg  = state.next_u8();
+    let mode = (arg & 0b11000000) >> 6;
+    if mode == 0b11 {
+        let src = state.register_value_u16(arg & B_MEM);
+        let dst = state.register_reference_u16((arg & B_REG) >> 3);
+        let result = *dst | src;
+        *dst = result;
+        state.set_pzs(result);
+        2
+    } else {
+        let addr = state.memory_address(mode, arg & B_MEM);
+        let src  = state.read_u16(addr);
+        let dst  = state.register_reference_u16((arg & B_REG) >> 3);
+        let result = *dst | src;
+        *dst = result;
+        state.set_pzs(result);
+        if addr % 2 == 0 {
+            6
+        } else {
+            8
+        }
+    }
+}
+
+#[inline]
 pub fn sub_w_t_rm (state: &mut CPU) -> u64 {
     let arg  = state.next_u8();
     let mode = (arg & 0b11000000) >> 6;
@@ -323,5 +349,57 @@ pub fn imm_b_s (state: &mut CPU) -> u64 {
 
 #[inline]
 pub fn imm_w_s (state: &mut CPU) -> u64 {
-    unimplemented!();
+    let arg  = state.next_u8();
+    let mode = (arg & B_MODE) >> 6;
+    let code = (arg & B_REG)  >> 3;
+    let mem  = (arg & B_MEM)  >> 0;
+    match code {
+        0b000 => {
+            unimplemented!("add");
+        },
+        0b001 => {
+            unimplemented!("or");
+        },
+        0b010 => {
+            unimplemented!("addc");
+        },
+        0b011 => {
+            unimplemented!("sub");
+        },
+        0b100 => {
+            unimplemented!("and");
+        },
+        0b101 => {
+            unimplemented!("sub");
+        },
+        0b110 => {
+            unimplemented!("xor");
+        },
+        0b111 => {
+            // FIXME: signed
+            if mode == 0b11 {
+                let dst = state.register_value_u16(mem) as i16;
+                let src = state.next_u16() as i16;
+                let (result, unsigned_overflow) = (dst as u16).overflowing_sub(src as u16);
+                let (_, signed_overflow) = dst.overflowing_sub(src);
+                state.set_pzs(result);
+                state.set_cy(unsigned_overflow);
+                state.set_v(signed_overflow);
+                2
+            } else {
+                let addr = state.memory_address(mode, mem);
+                let dst = state.read_u8(addr);
+                let src = state.next_u8();
+                let (result, unsigned_overflow) = (dst as u16).overflowing_sub(src as u16);
+                let (_, signed_overflow) = dst.overflowing_sub(src);
+                state.set_pzs(result);
+                state.set_cy(unsigned_overflow);
+                state.set_v(signed_overflow);
+                if addr % 2 == 0 { 6 } else { 8 }
+            }
+        },
+        _ => {
+            unreachable!("imm code {code:b}");
+        }
+    }
 }

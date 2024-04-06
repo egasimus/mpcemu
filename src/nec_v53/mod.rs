@@ -193,7 +193,7 @@ impl CPU {
                 0b011 => self.bp() + self.iy(),
                 0b100 => self.ix(),
                 0b101 => self.iy(),
-                0b110 => unimplemented!("direct address"),
+                0b110 => self.next_u16(),
                 0b111 => self.bw(),
                 _ => panic!("invalid memory inner mode {:b}", mem)
             },
