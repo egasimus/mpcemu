@@ -353,9 +353,31 @@ pub fn imm_w_s (state: &mut CPU) -> u64 {
     let mode = (arg & B_MODE) >> 6;
     let code = (arg & B_REG)  >> 3;
     let mem  = (arg & B_MEM)  >> 0;
+    // FIXME: sign extend https://en.wikipedia.org/wiki/Sign_extension
     match code {
         0b000 => {
-            unimplemented!("add");
+            if mode == 0b11 {
+                let dst = state.register_value_u16(mem) as i16;
+                let src = state.next_u16() as i16;
+                let (result, unsigned_overflow) = (dst as u16).overflowing_add(src as u16);
+                let (_, signed_overflow) = dst.overflowing_add(src);
+                state.set_register_u16(mem, result);
+                state.set_pzs(result);
+                state.set_cy(unsigned_overflow);
+                state.set_v(signed_overflow);
+                2
+            } else {
+                let addr = state.memory_address(mode, mem);
+                let dst = state.read_u16(addr);
+                let src = state.next_u16();
+                let (result, unsigned_overflow) = (dst as u16).overflowing_add(src as u16);
+                let (_, signed_overflow) = dst.overflowing_add(src);
+                state.set_register_u16(mem, result);
+                state.set_pzs(result);
+                state.set_cy(unsigned_overflow);
+                state.set_v(signed_overflow);
+                if addr % 2 == 0 { 6 } else { 8 }
+            }
         },
         0b001 => {
             unimplemented!("or");
@@ -376,7 +398,6 @@ pub fn imm_w_s (state: &mut CPU) -> u64 {
             unimplemented!("xor");
         },
         0b111 => {
-            // FIXME: signed
             if mode == 0b11 {
                 let dst = state.register_value_u16(mem) as i16;
                 let src = state.next_u16() as i16;
@@ -388,8 +409,8 @@ pub fn imm_w_s (state: &mut CPU) -> u64 {
                 2
             } else {
                 let addr = state.memory_address(mode, mem);
-                let dst = state.read_u8(addr);
-                let src = state.next_u8();
+                let dst = state.read_u16(addr);
+                let src = state.next_u16();
                 let (result, unsigned_overflow) = (dst as u16).overflowing_sub(src as u16);
                 let (_, signed_overflow) = dst.overflowing_sub(src);
                 state.set_pzs(result);
@@ -402,4 +423,140 @@ pub fn imm_w_s (state: &mut CPU) -> u64 {
             unreachable!("imm code {code:b}");
         }
     }
+}
+
+pub fn group1_b (state: &mut CPU) -> u64 {
+    let arg = state.next_u8();
+    let code = (arg & B_REG) >> 3;
+    match code {
+        0b000 => {
+            unimplemented!("test rm");
+        },
+        0b001 => {
+            panic!("undefined group1 instruction");
+        },
+        0b010 => {
+            unimplemented!("not rm");
+        },
+        0b011 => {
+            unimplemented!("neg rm");
+        },
+        0b100 => {
+            unimplemented!("mulu rm");
+        },
+        0b101 => {
+            unimplemented!("mul rm");
+        },
+        0b110 => {
+            unimplemented!("divu rm");
+        },
+        0b111 => {
+            let t = state.aw() as i16;
+            let mode = (arg & 0b11000000) >> 6;
+            if mode == 0b11 {
+                let dst = state.register_value_u8((arg & B_REG) >> 3) as i16;
+                if (((t / dst) > 0) && ((t / dst) <= 0x7F)) ||
+                   (((t / dst) < 0) && ((t / dst) > (0 - 0x7F - 1)))
+                {
+                    state.set_ah((t % dst) as u8);
+                    state.set_al((t / dst) as u8);
+                }
+                state.push_u16(state.psw());
+                state.set_ie(false);
+                state.set_brk(false);
+                //state.push_u16(state.ps());
+                //state.set_ps(u16::from_le_bytes([0x2, 0x3]));
+                //state.push_u16(state.pc());
+                //state.set_pc(u16::from_le_bytes([0x0, 0x1]));
+                17
+            } else {
+                let mem  = arg & 0b00000111;
+                let addr = state.memory_address(mode, mem);
+                let dst  = sign_extend_16(state.read_u8(addr) as u16, 8);
+                println!("\n\naddr={addr:x} dst={dst:b} t={t:b}\n");
+                state.memory_dump((addr / 0x10 - 0x8) * 0x10, 0x10, 0x10);
+                if (((t / dst) > 0) && ((t / dst) <= 0x7F)) ||
+                   (((t / dst) < 0) && ((t / dst) > (0 - 0x7F - 1)))
+                {
+                    state.set_ah((t % dst) as u8);
+                    state.set_al((t / dst) as u8);
+                }
+                state.push_u16(state.psw());
+                state.set_ie(false);
+                state.set_brk(false);
+                20
+            }
+        },
+        _ => {
+            unreachable!("group1 code {code:b}");
+        }
+    }
+}
+
+pub fn group1_w (state: &mut CPU) -> u64 {
+    let arg = state.next_u8();
+    let code = (arg & B_REG) >> 3;
+    match code {
+        0b000 => {
+            unimplemented!("test rm");
+        },
+        0b001 => {
+            panic!("undefined group1 instruction");
+        },
+        0b010 => {
+            unimplemented!("not rm");
+        },
+        0b011 => {
+            unimplemented!("neg rm");
+        },
+        0b100 => {
+            unimplemented!("mulu rm");
+        },
+        0b101 => {
+            unimplemented!("mul rm");
+        },
+        0b110 => {
+            unimplemented!("divu rm");
+        },
+        0b111 => {
+            let [b0, b1] = state.dw().to_le_bytes();
+            let [b2, b3] = state.aw().to_le_bytes();
+            let t = i32::from_le_bytes([b0, b1, b2, b3]);
+            let mode = (arg & 0b11000000) >> 6;
+            if mode == 0b11 {
+                let dst = state.register_value_u16((arg & B_REG) >> 3) as i32;
+                if (((t / dst) > 0) && ((t / dst) <= 0x7FFF)) ||
+                   (((t / dst) < 0) && ((t / dst) > (0 - 0x7FFFF - 1)))
+                {
+                    state.set_dw((t % dst) as u16);
+                    state.set_aw((t / dst) as u16);
+                }
+                state.push_u16(state.psw());
+                state.set_ie(false);
+                state.set_brk(false);
+                //state.push_u16(state.ps());
+                //state.set_ps(u16::from_le_bytes([0x2, 0x3]));
+                //state.push_u16(state.pc());
+                //state.set_pc(u16::from_le_bytes([0x0, 0x1]));
+                24
+            } else {
+                unimplemented!();
+            }
+        },
+        _ => {
+            unreachable!("group1 code {code:b}");
+        }
+    }
+}
+
+#[inline]
+pub fn sign_extend_16 (data: u16, size: u16) -> i16 {
+    assert!(size > 0 && size <= 16);
+    ((data << (16 - size)) as i16) >> (16 - size)
+}
+
+#[inline]
+pub fn sign_extend_32 (data: u32, size: u32) -> i32 {
+    assert!(size > 0 && size <= 32);
+    ((data << (32 - size)) as i32) >> (32 - size)
 }

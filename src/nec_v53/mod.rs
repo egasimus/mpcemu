@@ -149,6 +149,20 @@ impl CPU {
         }
     }
 
+    pub fn set_register_u16 (&mut self, reg: u8, value: u16) {
+        match reg {
+            0b000 => self.set_aw(value),
+            0b001 => self.set_cw(value),
+            0b010 => self.set_dw(value),
+            0b011 => self.set_bw(value),
+            0b100 => self.set_sp(value),
+            0b101 => self.set_bp(value),
+            0b110 => self.set_ix(value),
+            0b111 => self.set_iy(value),
+            _ => unreachable!(),
+        }
+    }
+
     pub fn register_reference_u16 (&mut self, reg: u8) -> &mut u16 {
         match reg {
             0b000 => &mut self.aw,
@@ -226,6 +240,16 @@ impl CPU {
                 }
             },
             _ => panic!("invalid memory outer mode {:b}", mode)
+        }
+    }
+
+    pub fn memory_dump (&self, start: u16, per_row: u8, rows: u8) {
+        for i in 0..rows {
+            let offset = start + i as u16 * per_row as u16;
+            print!("\n{:6X}|", offset);
+            for j in 0..per_row {
+                print!(" {:02x}", self.memory()[offset as usize + j as usize]);
+            }
         }
     }
 

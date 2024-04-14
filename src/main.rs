@@ -6,23 +6,11 @@ fn main () -> Result<(), Box<dyn std::error::Error>> {
     memory.extend_from_slice(&bin);
     memory.extend_from_slice(&bin);
     let mut cpu = nec_v53::CPU::new(memory);
-    //for i in 0..0x4000 {
-        //print!("\n{:6X}|", i * 0x20);
-        //for j in 0..16 {
-            //print!(" {:02x}", cpu.memory()[i * 0x20 + j]);
-        //}
-        //print!(" |");
-        //for j in 16..32 {
-            //print!(" {:02x}", cpu.memory()[i * 0x20 + j]);
-        //}
-    //}
     let mut first: bool = true;
     let mut last_address: usize = cpu.program_address();
-    let mut last_opcode:  u8    = 0;
     let mut last_clock:   u64   = cpu.clock;
     println!("\n\nRunning from {:x}:", cpu.program_address());
     loop {
-        let clock   = cpu.clock;
         let address = cpu.program_address();
         cpu.step();
         let opcode  = cpu.opcode();
@@ -41,22 +29,7 @@ fn main () -> Result<(), Box<dyn std::error::Error>> {
         } else {
             //print!(".")
         }
-        //if clock > 1800000 {
-            //println!();
-            //for i in 0xF198..=0xF19A {
-                //print!("\n{:6X}|", i * 0x10);
-                //for j in 0..16 {
-                    //print!(" {:02x}", cpu.memory()[i * 0x10 + j]);
-                //}
-                ////print!(" |");
-                ////for j in 16..32 {
-                    ////print!(" {:02x}", cpu.memory()[i * 0x20 + j]);
-                ////}
-            //}
-            //println!();
-        //}
         last_address = address;
-        last_opcode  = opcode;
         last_clock   = cpu.clock;
         first = false;
     }

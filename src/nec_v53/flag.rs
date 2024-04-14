@@ -86,3 +86,27 @@ fn determine_parity (result: u8) -> bool {
     }
     ones % 2 == 0
 }
+
+#[inline]
+pub fn clr1_cy (state: &mut CPU) -> u64 {
+    state.set_cy(false);
+    2
+}
+
+#[inline]
+pub fn set1_cy (state: &mut CPU) -> u64 {
+    state.set_cy(true);
+    2
+}
+
+#[inline]
+pub fn clr1_dir (state: &mut CPU) -> u64 {
+    state.set_dir(false);
+    2
+}
+
+#[inline]
+pub fn set1_dir (state: &mut CPU) -> u64 {
+    state.set_dir(true);
+    2
+}

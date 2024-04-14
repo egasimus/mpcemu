@@ -19,22 +19,22 @@ define_instruction_set! {
     [0x0E, "PUSH PS",  "Bitwise OR",                              unimplemented],
     [0x0F, "GROUP3",   "See Group 3",                             group3_instruction],
 
-    [0x10, "ADDC",     "", unimplemented],
-    [0x11, "ADDC",     "", unimplemented],
-    [0x12, "ADDC",     "", unimplemented],
-    [0x13, "ADDC",     "", unimplemented],
-    [0x14, "ADDC",     "", unimplemented],
-    [0x15, "ADDC",     "", unimplemented],
-    [0x16, "PUSH SS",  "", unimplemented],
-    [0x17, "POP SS",   "", unimplemented],
-    [0x18, "SUBC",     "", unimplemented],
-    [0x19, "SUBC",     "", unimplemented],
-    [0x1A, "SUBC",     "", unimplemented],
-    [0x1B, "SUBC",     "", unimplemented],
-    [0x1C, "SUBC",     "", unimplemented],
-    [0x1D, "SUBC",     "", unimplemented],
-    [0x1E, "PUSH DS0", "", push_ds0],
-    [0x1F, "POP DS0",  "", unimplemented],
+    [0x10, "ADDC",     "",                                     unimplemented],
+    [0x11, "ADDC",     "",                                     unimplemented],
+    [0x12, "ADDC",     "",                                     unimplemented],
+    [0x13, "ADDC",     "",                                     unimplemented],
+    [0x14, "ADDC",     "",                                     unimplemented],
+    [0x15, "ADDC",     "",                                     unimplemented],
+    [0x16, "PUSH SS",  "Push value of SS register to stack",   push_ss],
+    [0x17, "POP SS",   "Pop value of SS register from stack",  pop_ss],
+    [0x18, "SUBC",     "",                                     unimplemented],
+    [0x19, "SUBC",     "",                                     unimplemented],
+    [0x1A, "SUBC",     "",                                     unimplemented],
+    [0x1B, "SUBC",     "",                                     unimplemented],
+    [0x1C, "SUBC",     "",                                     unimplemented],
+    [0x1D, "SUBC",     "",                                     unimplemented],
+    [0x1E, "PUSH DS0", "Push value of DS0 register to stack",  push_ds0],
+    [0x1F, "POP DS0",  "Pop value of DS0 register from stack", pop_ds0],
 
     [0x20, "AND",   "",                                        unimplemented],
     [0x21, "AND",   "",                                        unimplemented],
@@ -87,37 +87,37 @@ define_instruction_set! {
     [0x4E, "DEC IX", "Decrement IX by 1", dec_ix],
     [0x4F, "DEC IY", "Decrement IY by 1", dec_iy],
 
-    [0x50, "PUSH AW", "Push value of AW register to stack", push_aw],
-    [0x51, "PUSH CW", "Push value of CW register to stack", push_cw],
-    [0x52, "PUSH DW", "Push value of DW register to stack", push_dw],
-    [0x53, "PUSH BW", "Push value of BW register to stack", push_bw],
-    [0x54, "PUSH SP", "", unimplemented],
-    [0x55, "PUSH BP", "", unimplemented],
-    [0x56, "PUSH IX", "Push value of IX register to stack", push_ix],
-    [0x57, "PUSH IY", "Push value of IY register to stack", push_iy],
-    [0x58, "POP AW",  "", unimplemented],
-    [0x59, "POP CW",  "", unimplemented],
-    [0x5A, "POP DW",  "", unimplemented],
-    [0x5B, "POP BW",  "", unimplemented],
-    [0x5C, "POP SP",  "", unimplemented],
-    [0x5D, "POP BP",  "", unimplemented],
-    [0x5E, "POP IX",  "", unimplemented],
-    [0x5F, "POP IY",  "", unimplemented],
+    [0x50, "PUSH AW", "Push value of AW register to stack",  push_aw],
+    [0x51, "PUSH CW", "Push value of CW register to stack",  push_cw],
+    [0x52, "PUSH DW", "Push value of DW register to stack",  push_dw],
+    [0x53, "PUSH BW", "Push value of BW register to stack",  push_bw],
+    [0x54, "PUSH SP", "Push value of SP register to stack",  push_sp],
+    [0x55, "PUSH BP", "Push value of BP register to stack",  push_bp],
+    [0x56, "PUSH IX", "Push value of IX register to stack",  push_ix],
+    [0x57, "PUSH IY", "Push value of IY register to stack",  push_iy],
+    [0x58, "POP AW",  "Pop value of AW register from stack", pop_aw],
+    [0x59, "POP CW",  "Pop value of CW register from stack", pop_cw],
+    [0x5A, "POP DW",  "Pop value of DW register from stack", pop_dw],
+    [0x5B, "POP BW",  "Pop value of BW register from stack", pop_bw],
+    [0x5C, "POP SP",  "Pop value of SP register from stack", pop_sp],
+    [0x5D, "POP BP",  "Pop value of BP register from stack", pop_bp],
+    [0x5E, "POP IX",  "Pop value of IX register from stack", pop_ix],
+    [0x5F, "POP IY",  "Pop value of IY register from stack", pop_iy],
 
-    [0x60, "PUSH R", "", unimplemented],
-    [0x61, "POP R",  "", unimplemented],
-    [0x62, "CHKIND", "", unimplemented],
-    [0x63, "UNDEF",  "", unimplemented],
-    [0x64, "REPNC",  "", unimplemented],
-    [0x65, "REPC",   "", unimplemented],
-    [0x66, "FPO2",   "", unimplemented],
-    [0x67, "FPO2",   "", unimplemented],
-    [0x68, "PUSH",   "", unimplemented],
-    [0x69, "MUL",    "", unimplemented],
-    [0x6A, "PUSH",   "", unimplemented],
-    [0x6B, "MUL",    "", unimplemented],
-    [0x6C, "INM",    "", unimplemented],
-    [0x6D, "INM",    "", unimplemented],
+    [0x60, "PUSH R", "",                              unimplemented],
+    [0x61, "POP R",  "",                              unimplemented],
+    [0x62, "CHKIND", "",                              unimplemented],
+    [0x63, "UNDEF",  "",                              unimplemented],
+    [0x64, "REPNC",  "",                              unimplemented],
+    [0x65, "REPC",   "",                              unimplemented],
+    [0x66, "FPO2",   "",                              unimplemented],
+    [0x67, "FPO2",   "",                              unimplemented],
+    [0x68, "PUSH",   "",                              unimplemented],
+    [0x69, "MUL",    "",                              unimplemented],
+    [0x6A, "PUSH",   "",                              unimplemented],
+    [0x6B, "MUL",    "",                              unimplemented],
+    [0x6C, "INM",    "",                              unimplemented],
+    [0x6D, "INM",    "",                              unimplemented],
     [0x6E, "OUTM",   "Output byte from memory at IX", outm_b],
     [0x6F, "OUTM",   "Output word from memory at IX", outm_w],
 
@@ -138,10 +138,10 @@ define_instruction_set! {
     [0x7E, "BLE", "Branch if lesser or equal",  unimplemented],
     [0x7F, "BGT", "Branch if greater",          unimplemented],
 
-    [0x80, "IMM",  "Unsigned arithmetic with byte constant",    imm_b],
-    [0x81, "IMM",  "Unsigned arithmetic with word constant",    imm_w],
-    [0x82, "IMM",  "Signed arithmetic with byte constant",      imm_b_s],
-    [0x83, "IMM",  "Signed arithmetic with word constant",      imm_w_s],
+    [0x80, "IMM",  "Unsigned byte constant arithmetic",         imm_b],
+    [0x81, "IMM",  "Unsigned word constant arithmetic",         imm_w],
+    [0x82, "IMM",  "Sign-extended byte constant arithmetic",    imm_b_s],
+    [0x83, "IMM",  "Sign-extended word constant arithmetic",    imm_w_s],
     [0x84, "TEST", "",                                          unimplemented],
     [0x85, "TEST", "",                                          unimplemented],
     [0x86, "XCH",  "",                                          unimplemented],
@@ -155,22 +155,22 @@ define_instruction_set! {
     [0x8E, "MOV",  "Move word to segment register from memory", mov_w_to_sreg],
     [0x8F, "POP",  "rm",                                        unimplemented],
 
-    [0x90, "NOP",         "Do nothing",        nop],
-    [0x91, "XCH CW",      "",                  unimplemented],
-    [0x92, "XCH DW",      "",                  unimplemented],
-    [0x93, "XCH BW",      "",                  unimplemented],
-    [0x94, "XCH SP",      "",                  unimplemented],
-    [0x95, "XCH BP",      "",                  unimplemented],
-    [0x96, "XCH IX",      "",                  unimplemented],
-    [0x97, "XCH IY",      "",                  unimplemented],
-    [0x98, "CVTBW",       "",                  unimplemented],
-    [0x99, "CVTBL",       "",                  unimplemented],
-    [0x9A, "CALL",        "Call a subroutine", unimplemented],
-    [0x9B, "POLL",        "",                  unimplemented],
-    [0x9C, "PUSH PSW",    "",                  unimplemented],
-    [0x9D, "POP PSW",     "",                  unimplemented],
-    [0x9E, "MOV PSW, AH", "",                  unimplemented],
-    [0x9F, "MOV AH, PSW", "",                  unimplemented],
+    [0x90, "NOP",         "Do nothing",                           nop],
+    [0x91, "XCH CW",      "Switch values of CW and AW",           unimplemented],
+    [0x92, "XCH DW",      "Switch values of DW and AW",           unimplemented],
+    [0x93, "XCH BW",      "Switch values of BW and AW",           unimplemented],
+    [0x94, "XCH SP",      "Switch values of SP and AW",           unimplemented],
+    [0x95, "XCH BP",      "Switch values of BP and AW",           unimplemented],
+    [0x96, "XCH IX",      "Switch values of IX and AW",           unimplemented],
+    [0x97, "XCH IY",      "Switch values of IY and AW",           unimplemented],
+    [0x98, "CVTBW",       "",                                     unimplemented],
+    [0x99, "CVTBL",       "",                                     unimplemented],
+    [0x9A, "CALL",        "Call a subroutine",                    unimplemented],
+    [0x9B, "POLL",        "",                                     unimplemented],
+    [0x9C, "PUSH PSW",    "Push value of PSW register to stack",  push_psw],
+    [0x9D, "POP PSW",     "Pop value of PSW register from stack", pop_psw],
+    [0x9E, "MOV PSW, AH", "",                                     unimplemented],
+    [0x9F, "MOV AH, PSW", "",                                     unimplemented],
 
     [0xA0, "MOV AL", "Move byte into AL from memory",               mov_al_m],
     [0xA1, "MOV AW", "Move word into AW from memory",               mov_aw_m],
@@ -223,22 +223,22 @@ define_instruction_set! {
     [0xCE, "BRKV",    "",                             unimplemented],
     [0xCF, "RETI",    "Return from interrupt, restoring PC, PS, and PSW", unimplemented],
 
-    [0xD0, "SHIFT", "Byte shift", unimplemented],
-    [0xD1, "SHIFT", "Word shift", shift_w],
+    [0xD0, "SHIFT", "Byte shift",         unimplemented],
+    [0xD1, "SHIFT", "Word shift",         shift_w],
     [0xD2, "SHIFT", "Byte shift to port", unimplemented],
     [0xD3, "SHIFT", "Word shift to port", unimplemented],
-    [0xD4, "CVTBD", "", unimplemented],
-    [0xD5, "CVTDB", "", unimplemented],
-    [0xD6, "UNDEF", "", unimplemented],
-    [0xD7, "TRANS", "", unimplemented],
-    [0xD8, "FPO1",  "", unimplemented],
-    [0xD9, "FPO1",  "", unimplemented],
-    [0xDA, "FPO1",  "", unimplemented],
-    [0xDB, "FPO1",  "", unimplemented],
-    [0xDC, "FPO1",  "", unimplemented],
-    [0xDD, "FPO1",  "", unimplemented],
-    [0xDE, "FPO1",  "", unimplemented],
-    [0xDF, "FPO1",  "", unimplemented],
+    [0xD4, "CVTBD", "",                   unimplemented],
+    [0xD5, "CVTDB", "",                   unimplemented],
+    [0xD6, "UNDEF", "",                   unimplemented],
+    [0xD7, "TRANS", "",                   unimplemented],
+    [0xD8, "FPO1",  "",                   nop],
+    [0xD9, "FPO1",  "",                   nop],
+    [0xDA, "FPO1",  "",                   nop],
+    [0xDB, "FPO1",  "",                   nop],
+    [0xDC, "FPO1",  "",                   nop],
+    [0xDD, "FPO1",  "",                   nop],
+    [0xDE, "FPO1",  "",                   nop],
+    [0xDF, "FPO1",  "",                   nop],
 
     [0xE0, "DBNZE", "",                                    unimplemented],
     [0xE1, "DBNZE", "",                                    unimplemented],
@@ -398,66 +398,6 @@ fn bnc (state: &mut CPU) -> u64 {
         6
     } else {
         3
-    }
-}
-
-fn group1_b (state: &mut CPU) -> u64 {
-    unimplemented!();
-}
-
-fn group1_w (state: &mut CPU) -> u64 {
-    let arg = state.next_u8();
-    let code = (arg & B_REG) >> 3;
-    match code {
-        0b000 => {
-            unimplemented!("test rm");
-        },
-        0b001 => {
-            panic!("undefined group1 instruction");
-        },
-        0b010 => {
-            unimplemented!("not rm");
-        },
-        0b011 => {
-            unimplemented!("neg rm");
-        },
-        0b100 => {
-            unimplemented!("mulu rm");
-        },
-        0b101 => {
-            unimplemented!("mul rm");
-        },
-        0b110 => {
-            unimplemented!("divu rm");
-        },
-        0b111 => {
-            let [b0, b1] = state.dw().to_le_bytes();
-            let [b2, b3] = state.aw().to_le_bytes();
-            let t = i32::from_le_bytes([b0, b1, b2, b3]);
-            let mode = (arg & 0b11000000) >> 6;
-            if mode == 0b11 {
-                let dst = state.register_value_u16((arg & B_REG) >> 3) as i32;
-                if (((t / dst) > 0) && ((t / dst) <= 0x7FFF)) ||
-                   (((t / dst) < 0) && ((t / dst) > (0 - 0x7FFFF - 1)))
-                {
-                    state.set_dw((t % dst) as u16);
-                    state.set_aw((t / dst) as u16);
-                }
-                state.push_u16(state.psw());
-                state.set_ie(false);
-                state.set_brk(false);
-                //state.push_u16(state.ps());
-                //state.set_ps(u16::from_le_bytes([0x2, 0x3]));
-                //state.push_u16(state.pc());
-                //state.set_pc(u16::from_le_bytes([0x0, 0x1]));
-                24
-            } else {
-                unimplemented!();
-            }
-        },
-        _ => {
-            unreachable!("group1 code {code:b}");
-        }
     }
 }
 
