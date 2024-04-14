@@ -1,139 +1,121 @@
 use super::*;
+use mpcemu_core::{instruction, Instruction};
 
-#[inline]
-pub fn add_b_f_rm (state: &mut CPU) -> u64 {
-    let arg  = state.next_u8();
+instruction! (add_b_f_rm (cpu) {
+    let arg  = cpu.next_u8();
     let mode = (arg & B_MODE) >> 6;
     let reg  = (arg & B_REG)  >> 3;
     let mem  = (arg & B_MEM)  >> 0;
-    let src  = state.register_value_u8(reg);
-    let addr = state.memory_address(mode, mem);
-    let dst  = state.read_u8(addr);
-    let (result, unsigned_overflow) = dst.overflowing_add(src);
-    let (_, signed_overflow) = (dst as i8).overflowing_add(src as i8);
-    state.write_u8(addr, result);
-    state.set_pzs(result as u16);
-    state.set_cy(unsigned_overflow);
-    state.set_v(signed_overflow);
-    if addr % 2 == 0 {
-        7
-    } else {
-        11
-    }
-}
+    (
+        format!("Add byte to memory from register"),
+        vec![0x00, arg],
+        Box::new(|cpu: &mut CPU| {
+            let src  = cpu.register_value_u8(reg);
+            let addr = cpu.memory_address(mode, mem);
+            let dst  = cpu.read_u8(addr);
+            let (result, unsigned_overflow) = dst.overflowing_add(src);
+            let (_, signed_overflow) = (dst as i8).overflowing_add(src as i8);
+            cpu.write_u8(addr, result);
+            cpu.set_pzs(result as u16);
+            cpu.set_cy(unsigned_overflow);
+            cpu.set_v(signed_overflow);
+            if addr % 2 == 0 { 7 } else { 11 }
+        })
+    )
+});
 
-#[inline]
-pub fn add_w_f_rm (state: &mut CPU) -> u64 {
-    let arg  = state.next_u8();
+instruction! (add_w_f_rm (cpu) {
+    let arg  = cpu.next_u8();
     let mode = (arg & B_MODE) >> 6;
     let reg  = (arg & B_REG)  >> 3;
     let mem  = (arg & B_MEM)  >> 0;
-    let src  = state.register_value_u16(reg);
-    match mode {
-        0b00 => match mem {
-            0b000 => unimplemented!(),
-            0b001 => unimplemented!(),
-            0b010 => unimplemented!(),
-            0b011 => unimplemented!(),
-            0b100 => unimplemented!(),
-            0b101 => {
-                state.write_u16(state.iy(), src);
-                if state.iy % 2 == 0 { 7 } else { 11 }
-            },
-            0b110 => unimplemented!(),
-            0b111 => unimplemented!(),
-            _ => unreachable!(),
-        },
-        0b01 => match mem {
-            0b000 => unimplemented!(),
-            0b001 => unimplemented!(),
-            0b010 => unimplemented!(),
-            0b011 => unimplemented!(),
-            0b100 => unimplemented!(),
-            0b101 => unimplemented!(),
-            0b110 => unimplemented!(),
-            0b111 => unimplemented!(),
-            _ => unreachable!(),
-        },
-        0b10 => match mem {
-            0b000 => unimplemented!(),
-            0b001 => unimplemented!(),
-            0b010 => unimplemented!(),
-            0b011 => unimplemented!(),
-            0b100 => unimplemented!(),
-            0b101 => unimplemented!(),
-            0b110 => unimplemented!(),
-            0b111 => unimplemented!(),
-            _ => unreachable!(),
-        },
-        0b11 => panic!("addressing mode can't be 0b11"),
-        _ => unreachable!(),
-    }
-}
+    (
+        format!("Add word to memory from register"),
+        vec![0x01, arg],
+        Box::new(|cpu: &mut CPU| {
+            let src  = cpu.register_value_u16(reg);
+            let addr = cpu.memory_address(mode, mem);
+            let dst  = cpu.read_u16(addr);
+            let (result, unsigned_overflow) = dst.overflowing_add(src);
+            let (_, signed_overflow) = (dst as i16).overflowing_add(src as i16);
+            cpu.write_u16(addr, result);
+            cpu.set_pzs(result as u16);
+            cpu.set_cy(unsigned_overflow);
+            cpu.set_v(signed_overflow);
+            if addr % 2 == 0 { 7 } else { 11 }
+        })
+    )
+});
 
-#[inline]
-pub fn add_b_t_rm (state: &mut CPU) -> u64 {
-    unimplemented!()
-}
+instruction! (add_b_t_rm (cpu) { unimplemented!() });
+instruction! (add_w_t_rm (cpu) { unimplemented!() });
+instruction! (add_b_ia (cpu) { unimplemented!() });
 
-#[inline]
-pub fn add_w_t_rm (state: &mut CPU) -> u64 {
-    unimplemented!()
-}
+instruction! (add_w_ia (cpu) {
+    let word = cpu.next_u16();
+    let [lo, hi] = word.to_le_bytes();
+    (
+        format!("Add word to accumulator from constant"),
+        vec![0x05, lo, hi],
+        Box::new(|cpu: &mut CPU|{
+            let (result, unsigned_overflow) = cpu.aw().overflowing_add(word);
+            let (_, signed_overflow) = (cpu.aw() as i16).overflowing_add(word as i16);
+            cpu.set_aw(result);
+            cpu.set_pzs(result);
+            cpu.set_cy(unsigned_overflow);
+            cpu.set_v(signed_overflow);
+            2
+        })
+    )
+});
 
-#[inline]
-pub fn add_b_ia (state: &mut CPU) -> u64 {
-    unimplemented!()
-}
+instruction! (cmp_aw_imm (cpu) {
+    let word = cpu.next_u16();
+    let [lo, hi] = word.to_le_bytes();
+    (
+        format!("CMP w ia"),
+        vec![0x3D, lo, hi],
+        Box::new(|cpu: &mut CPU|{
+            let (result, unsigned_overflow) = cpu.aw.overflowing_sub(word);
+            let (_, signed_overflow) = (cpu.aw as i16).overflowing_sub(word as i16);
+            cpu.set_pzs(result);
+            cpu.set_cy(unsigned_overflow);
+            cpu.set_v(signed_overflow);
+            2
+        })
+    )
+});
 
-#[inline]
-pub fn add_w_ia (state: &mut CPU) -> u64 {
-    let word = state.next_u16();
-    let (result, unsigned_overflow) = state.aw().overflowing_add(word);
-    let (_, signed_overflow) = (state.aw() as i16).overflowing_add(word as i16);
-    state.set_aw(result);
-    state.set_pzs(result);
-    state.set_cy(unsigned_overflow);
-    state.set_v(signed_overflow);
-    2
-}
-
-#[inline]
-pub fn cmp_aw_imm (state: &mut CPU) -> u64 {
-    let value = state.next_u16();
-    let (result, unsigned_overflow) = state.aw.overflowing_sub(value);
-    let (_, signed_overflow) = (state.aw as i16).overflowing_sub(value as i16);
-    state.set_pzs(result);
-    state.set_cy(unsigned_overflow);
-    state.set_v(signed_overflow);
-    2
-}
-
-#[inline]
-pub fn or_w_t_rm (state: &mut CPU) -> u64 {
-    let arg  = state.next_u8();
+instruction! (or_w_t_rm (cpu) {
+    let arg  = cpu.next_u8();
     let mode = (arg & 0b11000000) >> 6;
-    if mode == 0b11 {
-        let src = state.register_value_u16(arg & B_MEM);
-        let dst = state.register_reference_u16((arg & B_REG) >> 3);
-        let result = *dst | src;
-        *dst = result;
-        state.set_pzs(result);
-        2
-    } else {
-        let addr = state.memory_address(mode, arg & B_MEM);
-        let src  = state.read_u16(addr);
-        let dst  = state.register_reference_u16((arg & B_REG) >> 3);
-        let result = *dst | src;
-        *dst = result;
-        state.set_pzs(result);
-        if addr % 2 == 0 {
-            6
-        } else {
-            8
-        }
-    }
-}
+    (
+        format!("Word bitwise OR to register from memory"),
+        vec![0x0B, arg],
+        Box::new(|cpu: &mut CPU|{
+            if mode == 0b11 {
+                let src = cpu.register_value_u16(arg & B_MEM);
+                let dst = cpu.register_reference_u16((arg & B_REG) >> 3);
+                let result = *dst | src;
+                *dst = result;
+                cpu.set_pzs(result);
+                2
+            } else {
+                let addr = cpu.memory_address(mode, arg & B_MEM);
+                let src  = cpu.read_u16(addr);
+                let dst  = cpu.register_reference_u16((arg & B_REG) >> 3);
+                let result = *dst | src;
+                *dst = result;
+                cpu.set_pzs(result);
+                if addr % 2 == 0 {
+                    6
+                } else {
+                    8
+                }
+            }
+        })
+    )
+});
 
 #[inline]
 pub fn sub_w_t_rm (state: &mut CPU) -> u64 {

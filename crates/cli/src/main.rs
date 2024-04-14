@@ -1,11 +1,11 @@
-mod nec_v53;
+use mpcemu_v53;
 
 fn main () -> Result<(), Box<dyn std::error::Error>> {
     let bin = std::fs::read("./data/mpc3000-v3.12.bin")?;
     let mut memory = vec![];
     memory.extend_from_slice(&bin);
     memory.extend_from_slice(&bin);
-    let mut cpu = nec_v53::CPU::new(memory);
+    let mut cpu = mpcemu_v53::CPU::new(memory);
     let mut first: bool = true;
     let mut last_address: usize = cpu.program_address();
     let mut last_clock:   u64   = cpu.clock;
@@ -14,8 +14,8 @@ fn main () -> Result<(), Box<dyn std::error::Error>> {
         let address = cpu.program_address();
         cpu.step();
         let opcode  = cpu.opcode();
-        let name    = nec_v53::get_instruction_name(opcode);
-        let info    = nec_v53::get_instruction_description(opcode);
+        let name    = mpcemu_v53::get_instruction_name(opcode);
+        let info    = mpcemu_v53::get_instruction_description(opcode);
         if first || last_address != address {
             print!("\n\n{last_clock:10} {address:05X}  {opcode:02X}  {name:10}  {info}");
             print!("\n           AW={:04X} BW={:04X} CW={:04X} DW={:04X} PS={:04X} SS={:04X} DS0={:04X} DS1={:04X} IX={:04X} IY={:04X}",
@@ -34,35 +34,3 @@ fn main () -> Result<(), Box<dyn std::error::Error>> {
         first = false;
     }
 }
-
-#[macro_export] macro_rules! define_instruction_set (
-
-    ($([$code:literal, $inst:literal, $info:literal, $impl:ident],)+$(,)?) => {
-
-        #[allow(unused)]
-        pub fn get_instruction_name (code: u8) -> &'static str {
-            match code {
-                $($code => $inst),+,
-                _ => panic!("undefined instruction {}", code),
-            }
-        }
-
-        #[allow(unused)]
-        pub fn get_instruction_description (code: u8) -> &'static str {
-            match code {
-                $($code => $info),+,
-                _ => panic!("undefined instruction {}", code),
-            }
-        }
-
-        #[allow(unused)]
-        pub fn execute_instruction (state: &mut CPU, code: u8) -> u64 {
-            match code {
-                $($code => $impl(state)),+,
-                _ => panic!("undefined instruction {}", code),
-            }
-        }
-
-    }
-
-);

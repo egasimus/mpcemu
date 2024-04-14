@@ -1,0 +1,8 @@
+[package]
+name = "mpcemu-cli"
+version = "0.1.0"
+edition = "2021"
+description = "Emulation CLI"
+
+[dependencies]
+mpcemu-v53 = { path = "../v53" }

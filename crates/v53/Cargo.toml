@@ -1,0 +1,8 @@
+[package]
+name = "mpcemu-v53"
+version = "0.1.0"
+edition = "2021"
+description = "Emulator of NEC V53"
+
+[dependencies]
+mpcemu-core = { path = "../core" }
