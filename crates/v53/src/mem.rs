@@ -395,75 +395,6 @@ pub fn movbk_w (state: &mut CPU) -> u64 {
 }
 
 #[inline]
-/// Move word from register
-pub fn mov_w_from_reg_to_mem (state: &mut CPU) -> u64 {
-    let arg  = state.next_u8();
-    let addr = state.memory_address((arg & B_MODE) >> 6, arg & B_MEM);
-    let val  = state.register_value_u16((arg & B_REG) >> 3);
-    state.write_u16(addr, val);
-    if addr % 2 == 0 {
-        3
-    } else {
-        5
-    }
-}
-
-#[inline]
-/// Move word to register
-pub fn mov_w_to_reg (state: &mut CPU) -> u64 {
-    let arg  = state.next_u8();
-    let mode = (arg & B_MODE) >> 6;
-    if mode == 0b11 {
-        let src = state.register_value_u16(arg & B_MEM);
-        let dst = state.register_reference_u16((arg & B_REG) >> 3);
-        *dst = src;
-        2
-    } else {
-        let value = state.next_u16();
-        let memory = arg & B_MEM;
-        if mode == 0b01 {
-            match memory {
-                0b000 => unimplemented!(),
-                0b001 => unimplemented!(),
-                0b010 => unimplemented!(),
-                0b011 => unimplemented!(),
-                0b100 => unimplemented!(),
-                0b101 => unimplemented!(),
-                0b110 => unimplemented!(),
-                0b111 => unimplemented!(),
-                _ => unreachable!(),
-            }
-        } else if mode == 0b10 {
-            match memory {
-                0b000 => unimplemented!(),
-                0b001 => unimplemented!(),
-                0b010 => unimplemented!(),
-                0b011 => unimplemented!(),
-                0b100 => unimplemented!(),
-                0b101 => unimplemented!(),
-                0b110 => unimplemented!(),
-                0b111 => unimplemented!(),
-                _ => unreachable!(),
-            }
-        } else if mode == 0b00 {
-            match memory {
-                0b000 => unimplemented!(),
-                0b001 => unimplemented!(),
-                0b010 => unimplemented!(),
-                0b011 => unimplemented!(),
-                0b100 => unimplemented!(),
-                0b101 => unimplemented!(),
-                0b110 => unimplemented!(),
-                0b111 => unimplemented!(),
-                _ => unreachable!(),
-            }
-        } else {
-            unreachable!();
-        }
-    }
-}
-
-#[inline]
 pub fn mov_w_from_sreg (state: &mut CPU) -> u64 {
     let arg   = state.next_u8();
     let mode  = (arg & B_MODE) >> 6;
@@ -484,61 +415,6 @@ pub fn mov_w_from_sreg (state: &mut CPU) -> u64 {
 }
 
 #[inline]
-/// Move word to segment register
-pub fn mov_w_to_sreg (state: &mut CPU) -> u64 {
-    let arg  = state.next_u8();
-    let mode = (arg & B_MODE) >> 6;
-    if mode == 0b11 {
-        let src = state.register_value_u16(arg & B_MEM);
-        let dst = state.segment_register_reference((arg & B_SREG) >> 3);
-        *dst = src;
-        2
-    } else {
-        let value = state.next_u16();
-        let memory = arg & B_MEM;
-        if mode == 0b01 {
-            match memory {
-                0b000 => unimplemented!(),
-                0b001 => unimplemented!(),
-                0b010 => unimplemented!(),
-                0b011 => unimplemented!(),
-                0b100 => unimplemented!(),
-                0b101 => unimplemented!(),
-                0b110 => unimplemented!(),
-                0b111 => unimplemented!(),
-                _ => unreachable!(),
-            }
-        } else if mode == 0b10 {
-            match memory {
-                0b000 => unimplemented!(),
-                0b001 => unimplemented!(),
-                0b010 => unimplemented!(),
-                0b011 => unimplemented!(),
-                0b100 => unimplemented!(),
-                0b101 => unimplemented!(),
-                0b110 => unimplemented!(),
-                0b111 => unimplemented!(),
-                _ => unreachable!(),
-            }
-        } else if mode == 0b00 {
-            match memory {
-                0b000 => unimplemented!(),
-                0b001 => unimplemented!(),
-                0b010 => unimplemented!(),
-                0b011 => unimplemented!(),
-                0b100 => unimplemented!(),
-                0b101 => unimplemented!(),
-                0b110 => unimplemented!(),
-                0b111 => unimplemented!(),
-                _ => unreachable!(),
-            }
-        } else {
-            unreachable!();
-        }
-    }
-}
-
-#[inline]
 pub fn mov_ds1_aw (state: &mut CPU) -> u64 {
     state.ds1 = state.aw;
     if state.aw % 2 == 0 { 10 } else { 14 }
@@ -547,58 +423,6 @@ pub fn mov_ds1_aw (state: &mut CPU) -> u64 {
 #[inline]
 pub fn mov_ds0_aw (state: &mut CPU) -> u64 {
     unimplemented!()
-}
-
-#[inline]
-pub fn stm_b (state: &mut CPU) -> u64 {
-    let iy = state.iy();
-    state.write_u8(state.ds1_address(iy) as u16, state.al());
-    state.set_iy(if state.dir() {
-        iy.overflowing_sub(1).0
-    } else {
-        iy.overflowing_add(1).0
-    });
-    if iy % 2 == 0 { 3 } else { 5 }
-}
-
-#[inline]
-pub fn stm_w (state: &mut CPU) -> u64 {
-    let iy = state.iy();
-    state.write_u16(state.ds1_address(iy) as u16, state.aw());
-    state.set_iy(if state.dir() {
-        iy.overflowing_sub(2).0
-    } else {
-        iy.overflowing_add(2).0
-    });
-    if iy % 2 == 0 { 3 } else { 5 }
-}
-
-#[inline]
-pub fn ldm_b (state: &mut CPU) -> u64 {
-    let data = state.read_u8(state.ix);
-    state.set_al(data);
-    if state.dir() {
-        state.ix = state.ix - 1;
-    } else {
-        state.ix = state.ix + 1;
-    }
-    5
-}
-
-#[inline]
-pub fn ldm_w (state: &mut CPU) -> u64 {
-    let data = state.read_u16(state.ix);
-    state.aw = data;
-    if state.dir() {
-        state.ix = state.ix - 2;
-    } else {
-        state.ix = state.ix + 2;
-    }
-    if state.ix % 2 == 1 {
-        7
-    } else {
-        5
-    }
 }
 
 #[inline]
