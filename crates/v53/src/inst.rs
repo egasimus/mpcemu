@@ -13,12 +13,10 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                 let src  = cpu.register_value_u8(reg);
                 let addr = cpu.memory_address(mode, mem);
                 let dst  = cpu.read_u8(addr);
-                let (result, unsigned_overflow) = dst.overflowing_add(src);
-                let (_, signed_overflow) = (dst as i8).overflowing_add(src as i8);
+                let (result, carry) = dst.overflowing_add(src);
+                let (_, overflow) = (dst as i8).overflowing_add(src as i8);
                 cpu.write_u8(addr, result);
-                cpu.set_pzs(result as u16);
-                cpu.set_cy(unsigned_overflow);
-                cpu.set_v(signed_overflow);
+                cpu.set_pzscyv(result as u16, carry, overflow);
                 if addr % 2 == 0 { 7 } else { 11 }
             }))
         },
@@ -29,12 +27,10 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                 let src  = cpu.register_value_u16(reg);
                 let addr = cpu.memory_address(mode, mem);
                 let dst  = cpu.read_u16(addr);
-                let (result, unsigned_overflow) = dst.overflowing_add(src);
-                let (_, signed_overflow) = (dst as i16).overflowing_add(src as i16);
+                let (result, carry) = dst.overflowing_add(src);
+                let (_, overflow) = (dst as i16).overflowing_add(src as i16);
                 cpu.write_u16(addr, result);
-                cpu.set_pzs(result as u16);
-                cpu.set_cy(unsigned_overflow);
-                cpu.set_v(signed_overflow);
+                cpu.set_pzscyv(result, carry, overflow);
                 if addr % 2 == 0 { 7 } else { 11 }
             }))
         },
@@ -47,12 +43,10 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
             let word = cpu.next_u16();
             let [lo, hi] = word.to_le_bytes();
             (format!("ADD AW, {word}"), vec![op, lo, hi], Box::new(move |cpu: &mut CPU|{
-                let (result, unsigned_overflow) = cpu.aw().overflowing_add(word);
-                let (_, signed_overflow) = (cpu.aw() as i16).overflowing_add(word as i16);
+                let (result, carry) = cpu.aw().overflowing_add(word);
+                let (_, overflow) = (cpu.aw() as i16).overflowing_add(word as i16);
                 cpu.set_aw(result);
-                cpu.set_pzs(result);
-                cpu.set_cy(unsigned_overflow);
-                cpu.set_v(signed_overflow);
+                cpu.set_pzscyv(result, carry, overflow);
                 2
             }))
         },
@@ -179,23 +173,19 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                 if mode == 0b11 {
                     let src = cpu.register_value_u8(mem);
                     let dst = cpu.register_value_u8(reg);
-                    let (result, unsigned_overflow) = dst.overflowing_sub(src);
-                    let (_, signed_overflow) = (dst as i8).overflowing_sub(src as i8);
+                    let (result, carry) = dst.overflowing_sub(src);
+                    let (_, overflow) = (dst as i8).overflowing_sub(src as i8);
                     cpu.set_register_u8(reg, result);
-                    cpu.set_pzs(result as u16);
-                    cpu.set_cy(unsigned_overflow);
-                    cpu.set_v(signed_overflow);
+                    cpu.set_pzscyv(result as u16, carry, overflow);
                     2
                 } else {
                     let addr = cpu.memory_address(mode, mem);
                     let src  = cpu.read_u8(addr);
                     let dst  = cpu.register_value_u8(reg);
-                    let (result, unsigned_overflow) = dst.overflowing_sub(src);
-                    let (_, signed_overflow) = (dst as i8).overflowing_sub(src as i8);
+                    let (result, carry) = dst.overflowing_sub(src);
+                    let (_, overflow) = (dst as i8).overflowing_sub(src as i8);
                     cpu.set_register_u8(reg, result);
-                    cpu.set_pzs(result as u16);
-                    cpu.set_cy(unsigned_overflow);
-                    cpu.set_v(signed_overflow);
+                    cpu.set_pzscyv(result as u16, carry, overflow);
                     if addr % 2 == 0 { 6 } else { 8 }
                 }
             }))
@@ -207,23 +197,19 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                 if mode == 0b11 {
                     let src = cpu.register_value_u8(mem);
                     let dst = cpu.register_value_u8(reg);
-                    let (result, unsigned_overflow) = dst.overflowing_sub(src);
-                    let (_, signed_overflow) = (dst as i16).overflowing_sub(src as i16);
+                    let (result, carry) = dst.overflowing_sub(src);
+                    let (_, overflow) = (dst as i16).overflowing_sub(src as i16);
                     cpu.set_register_u8(reg, result);
-                    cpu.set_pzs(result as u16);
-                    cpu.set_cy(unsigned_overflow);
-                    cpu.set_v(signed_overflow);
+                    cpu.set_pzscyv(result as u16, carry, overflow);
                     2
                 } else {
                     let addr = cpu.memory_address(mode, mem);
                     let src  = cpu.read_u8(addr);
                     let dst  = cpu.register_value_u8(reg);
-                    let (result, unsigned_overflow) = dst.overflowing_sub(src);
-                    let (_, signed_overflow) = (dst as i16).overflowing_sub(src as i16);
+                    let (result, carry) = dst.overflowing_sub(src);
+                    let (_, overflow) = (dst as i16).overflowing_sub(src as i16);
                     cpu.set_register_u8(reg, result);
-                    cpu.set_pzs(result as u16);
-                    cpu.set_cy(unsigned_overflow);
-                    cpu.set_v(signed_overflow);
+                    cpu.set_pzscyv(result as u16, carry, overflow);
                     if addr % 2 == 0 { 6 } else { 8 }
                 }
             }))
@@ -280,21 +266,17 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                 if mode == 0b11 {
                     let src = cpu.register_value_u8(reg);
                     let dst = cpu.register_value_u8(mem);
-                    let (result, unsigned_overflow) = dst.overflowing_sub(src);
-                    let (_, signed_overflow) = (dst as i8).overflowing_sub(src as i8);
-                    cpu.set_pzs(result as u16);
-                    cpu.set_cy(unsigned_overflow);
-                    cpu.set_v(signed_overflow);
+                    let (result, carry) = dst.overflowing_sub(src);
+                    let (_, overflow) = (dst as i8).overflowing_sub(src as i8);
+                    cpu.set_pzscyv(result as u16, carry, overflow);
                     2
                 } else {
                     let src  = cpu.register_value_u8(reg);
                     let addr = cpu.memory_address(mode, mem);
                     let dst  = cpu.read_u8(addr);
-                    let (result, unsigned_overflow) = dst.overflowing_sub(src);
-                    let (_, signed_overflow) = (dst as i8).overflowing_sub(src as i8);
-                    cpu.set_pzs(result as u16);
-                    cpu.set_cy(unsigned_overflow);
-                    cpu.set_v(signed_overflow);
+                    let (result, carry) = dst.overflowing_sub(src);
+                    let (_, overflow) = (dst as i8).overflowing_sub(src as i8);
+                    cpu.set_pzscyv(result as u16, carry, overflow);
                     if addr % 2 == 0 {
                         6
                     } else {
@@ -313,21 +295,17 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                 if mode == 0b11 {
                     let src = cpu.register_value_u16(mem);
                     let dst = cpu.register_reference_u16(reg);
-                    let (result, unsigned_overflow) = (*dst).overflowing_sub(src);
-                    let (_, signed_overflow) = (*dst as i16).overflowing_sub(src as i16);
-                    cpu.set_pzs(result);
-                    cpu.set_cy(unsigned_overflow);
-                    cpu.set_v(signed_overflow);
+                    let (result, carry) = (*dst).overflowing_sub(src);
+                    let (_, overflow) = (*dst as i16).overflowing_sub(src as i16);
+                    cpu.set_pzscyv(result, carry, overflow);
                     2
                 } else {
                     let addr = cpu.memory_address(mode, mem);
                     let src  = cpu.read_u16(addr);
                     let dst  = cpu.register_reference_u16(reg);
-                    let (result, unsigned_overflow) = (*dst).overflowing_sub(src);
-                    let (_, signed_overflow) = (*dst as i16).overflowing_sub(src as i16);
-                    cpu.set_pzs(result);
-                    cpu.set_cy(unsigned_overflow);
-                    cpu.set_v(signed_overflow);
+                    let (result, carry) = (*dst).overflowing_sub(src);
+                    let (_, overflow) = (*dst as i16).overflowing_sub(src as i16);
+                    cpu.set_pzscyv(result, carry, overflow);
                     if addr % 2 == 0 {
                         6
                     } else {
@@ -342,11 +320,9 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
             let word = cpu.next_u16();
             let [lo, hi] = word.to_le_bytes();
             (format!("CMP w ia"), vec![op, lo, hi], Box::new(move |cpu: &mut CPU|{
-                let (result, unsigned_overflow) = cpu.aw.overflowing_sub(word);
-                let (_, signed_overflow) = (cpu.aw as i16).overflowing_sub(word as i16);
-                cpu.set_pzs(result);
-                cpu.set_cy(unsigned_overflow);
-                cpu.set_v(signed_overflow);
+                let (result, carry) = cpu.aw.overflowing_sub(word);
+                let (_, overflow) = (cpu.aw as i16).overflowing_sub(word as i16);
+                cpu.set_pzscyv(result, carry, overflow);
                 2
             }))
         },
@@ -572,11 +548,9 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                     let addr = cpu.memory_address(mode, mem);
                     let dst = cpu.read_u8(addr);
                     let src = cpu.next_u8();
-                    let (result, unsigned_overflow) = dst.overflowing_sub(src);
-                    let (_, signed_overflow) = (dst as i8).overflowing_sub(src as i8);
-                    cpu.set_pzs(result as u16);
-                    cpu.set_cy(unsigned_overflow);
-                    cpu.set_v(signed_overflow);
+                    let (result, carry) = dst.overflowing_sub(src);
+                    let (_, overflow) = (dst as i8).overflowing_sub(src as i8);
+                    cpu.set_pzscyv(result as u16, carry, overflow);
                     if addr % 2 == 0 { 6 } else { 8 }
                 })),
                 _ => unreachable!()
@@ -621,12 +595,10 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                     let [lo, hi] = src.to_le_bytes();
                     (format!("ADDW {}, {src:04X}", register_name_u16(mem)), vec![op, arg, lo, hi], Box::new(move |cpu: &mut CPU|{
                         let dst = cpu.register_value_u16(mem) as i16;
-                        let (result, unsigned_overflow) = (dst as u16).overflowing_add(src as u16);
-                        let (_, signed_overflow) = dst.overflowing_add(src);
+                        let (result, carry) = (dst as u16).overflowing_add(src as u16);
+                        let (_, overflow) = dst.overflowing_add(src);
                         cpu.set_register_u16(mem, result);
-                        cpu.set_pzs(result);
-                        cpu.set_cy(unsigned_overflow);
-                        cpu.set_v(signed_overflow);
+                        cpu.set_pzscyv(result, carry, overflow);
                         2
                     }))
                 },
@@ -636,12 +608,10 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                     (format!("ADDW {}, mem", register_name_u16(mem)), vec![op, arg, lo, hi], Box::new(move |cpu: &mut CPU|{
                         let addr = cpu.memory_address(mode, mem);
                         let dst = cpu.read_u16(addr);
-                        let (result, unsigned_overflow) = (dst as u16).overflowing_add(src as u16);
-                        let (_, signed_overflow) = dst.overflowing_add(src as u16);
+                        let (result, carry) = (dst as u16).overflowing_add(src as u16);
+                        let (_, overflow) = dst.overflowing_add(src as u16);
                         cpu.set_register_u16(mem, result);
-                        cpu.set_pzs(result);
-                        cpu.set_cy(unsigned_overflow);
-                        cpu.set_v(signed_overflow);
+                        cpu.set_pzscyv(result, carry, overflow);
                         if addr % 2 == 0 { 6 } else { 8 }
                     }))
                 },
@@ -665,28 +635,26 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                 })),
                 (0b111, 0b11) => {
                     let src = cpu.next_u8();
-                    (format!("CMPW {}, {src:04X}", register_name_u16(mem)), vec![op, arg, src], Box::new(move |cpu: &mut CPU|{
-                        let dst = cpu.register_value_u16(mem) as i16;
-                        let (result, unsigned_overflow) = (dst as u16).overflowing_sub(src as u16);
-                        let (_, signed_overflow) = dst.overflowing_sub(src as i16);
-                        cpu.set_pzs(result);
-                        cpu.set_cy(unsigned_overflow);
-                        cpu.set_v(signed_overflow);
-                        2
-                    }))
+                    (format!("CMPW {}, {src:04X}", register_name_u16(mem)), vec![op, arg, src],
+                        Box::new(move |cpu: &mut CPU|{
+                            let dst = cpu.register_value_u16(mem) as i16;
+                            let (result, carry) = (dst as u16).overflowing_sub(src as u16);
+                            let (_, overflow) = dst.overflowing_sub(src as i16);
+                            cpu.set_pzscyv(result, carry, overflow);
+                            2
+                        }))
                 },
                 (0b111, _) => {
                     let src = cpu.next_u8();
-                    (format!("CMPW {}, mem", register_name_u16(mem)), vec![op, arg, src], Box::new(move |cpu: &mut CPU|{
-                        let addr = cpu.memory_address(mode, mem);
-                        let dst = cpu.read_u16(addr);
-                        let (result, unsigned_overflow) = (dst as u16).overflowing_sub(src as u16);
-                        let (_, signed_overflow) = dst.overflowing_sub(src as u16);
-                        cpu.set_pzs(result);
-                        cpu.set_cy(unsigned_overflow);
-                        cpu.set_v(signed_overflow);
-                        if addr % 2 == 0 { 6 } else { 8 }
-                    }))
+                    (format!("CMPW {}, mem", register_name_u16(mem)), vec![op, arg, src],
+                        Box::new(move |cpu: &mut CPU|{
+                            let addr = cpu.memory_address(mode, mem);
+                            let dst = cpu.read_u16(addr);
+                            let (result, carry) = (dst as u16).overflowing_sub(src as u16);
+                            let (_, overflow) = dst.overflowing_sub(src as u16);
+                            cpu.set_pzscyv(result, carry, overflow);
+                            if addr % 2 == 0 { 6 } else { 8 }
+                        }))
                 },
                 _ => unreachable!()
             }

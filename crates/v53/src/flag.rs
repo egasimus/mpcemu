@@ -74,6 +74,14 @@ impl CPU {
         self.set_z(result == 0);
         self.set_s(result >> 15 == 1);
     }
+    /// Set parity, zero, sign, carry, and overflow flags from word result.
+    pub fn set_pzscyv (&mut self, result: u16, carry: bool, overflow: bool) {
+        self.set_p(determine_parity(result as u8));
+        self.set_z(result == 0);
+        self.set_s(result >> 15 == 1);
+        self.set_cy(carry);
+        self.set_v(overflow);
+    }
 }
 
 fn determine_parity (result: u8) -> bool {
