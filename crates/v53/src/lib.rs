@@ -216,46 +216,78 @@ impl CPU {
     #[inline]
     pub fn memory_address (&mut self, mode: u8, mem: u8) -> u16 {
         match mode {
-            0b00 => match mem {
-                0b000 => self.bw() + self.ix(),
-                0b001 => self.bw() + self.iy(),
-                0b010 => self.bp() + self.ix(),
-                0b011 => self.bp() + self.iy(),
-                0b100 => self.ix(),
-                0b101 => self.iy(),
-                0b110 => self.next_u16(),
-                0b111 => self.bw(),
-                _ => panic!("invalid memory inner mode {:b}", mem)
-            },
+            0b00 => self.memory_address_00(mem),
             0b01 => {
-                let displace = self.next_u8() as u16;
-                match mem {
-                    0b000 => self.bw() + self.ix() + displace,
-                    0b001 => self.bw() + self.iy() + displace,
-                    0b010 => self.bp() + self.ix() + displace,
-                    0b011 => self.bp() + self.iy() + displace,
-                    0b100 => self.ix() + displace,
-                    0b101 => self.iy() + displace,
-                    0b110 => self.bp() + displace,
-                    0b111 => self.bw() + displace,
-                    _ => panic!("invalid memory inner mode {:b}", mem)
-                }
+                let displace = self.next_u8();
+                self.memory_address_01(mem, displace)
             },
             0b10 => {
                 let displace = self.next_u16();
-                match mem {
-                    0b000 => self.bw() + self.ix() + displace,
-                    0b001 => self.bw() + self.iy() + displace,
-                    0b010 => self.bp() + self.ix() + displace,
-                    0b011 => self.bp() + self.iy() + displace,
-                    0b100 => self.ix() + displace,
-                    0b101 => self.iy() + displace,
-                    0b110 => self.bp() + displace,
-                    0b111 => self.bw() + displace,
-                    _ => panic!("invalid memory inner mode {:b}", mem)
-                }
+                self.memory_address_10(mem, displace)
             },
             _ => panic!("invalid memory outer mode {:b}", mode)
+        }
+    }
+
+    //#[inline]
+    //pub fn memory_address_dasm (&mut self, dasm: &[u8], mode: u8, mem: u8) -> (u16, Vec<u8>) {
+        //let dasm = Vec::from(dasm);
+        //match mode {
+            //0b00 => self.memory_address_00(mem),
+            //0b01 => {
+                //let displace = self.next_u8();
+                //self.memory_address_01(mem, displace)
+            //},
+            //0b10 => {
+                //let displace = self.next_u16();
+                //self.memory_address_10(mem, displace)
+            //},
+            //_ => panic!("invalid memory outer mode {:b}", mode)
+        //}
+    //}
+
+    #[inline]
+    pub fn memory_address_00 (&mut self, mem: u8) -> u16 {
+        match mem {
+            0b000 => self.bw() + self.ix(),
+            0b001 => self.bw() + self.iy(),
+            0b010 => self.bp() + self.ix(),
+            0b011 => self.bp() + self.iy(),
+            0b100 => self.ix(),
+            0b101 => self.iy(),
+            0b110 => self.next_u16(),
+            0b111 => self.bw(),
+            _ => panic!("invalid memory inner mode {:b}", mem)
+        }
+    }
+
+    #[inline]
+    pub fn memory_address_01 (&self, mem: u8, displace: u8) -> u16 {
+        match mem {
+            0b000 => self.bw() + self.ix() + displace as u16,
+            0b001 => self.bw() + self.iy() + displace as u16,
+            0b010 => self.bp() + self.ix() + displace as u16,
+            0b011 => self.bp() + self.iy() + displace as u16,
+            0b100 => self.ix() + displace as u16,
+            0b101 => self.iy() + displace as u16,
+            0b110 => self.bp() + displace as u16,
+            0b111 => self.bw() + displace as u16,
+            _ => panic!("invalid memory inner mode {:b}", mem)
+        }
+    }
+
+    #[inline]
+    pub fn memory_address_10 (&self, mem: u8, displace: u16) -> u16 {
+        match mem {
+            0b000 => self.bw() + self.ix() + displace,
+            0b001 => self.bw() + self.iy() + displace,
+            0b010 => self.bp() + self.ix() + displace,
+            0b011 => self.bp() + self.iy() + displace,
+            0b100 => self.ix() + displace,
+            0b101 => self.iy() + displace,
+            0b110 => self.bp() + displace,
+            0b111 => self.bw() + displace,
+            _ => panic!("invalid memory inner mode {:b}", mem)
         }
     }
 

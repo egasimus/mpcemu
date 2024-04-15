@@ -445,63 +445,117 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
             }
         })),
 
-        0x70 => unimplemented!("BV"),
-        0x71 => unimplemented!("BNV"),
+        0x70 => {
+            let arg = cpu.next_i8();
+            (format!("BV {arg}"), vec![op, arg as u8], Box::new(move |cpu: &mut CPU|{
+                if cpu.v() { cpu.jump_i8(arg); 6 } else { 3 }
+            }))
+        },
+
+        0x71 => {
+            let arg = cpu.next_i8();
+            (format!("BNV {arg}"), vec![op, arg as u8], Box::new(move |cpu: &mut CPU|{
+                if !cpu.v() { cpu.jump_i8(arg); 6 } else { 3 }
+            }))
+        },
 
         0x72 => {
             let arg = cpu.next_i8();
-            (
-                format!("BC"),
-                vec![op, arg as u8],
-                Box::new(move |cpu: &mut CPU|{
-                    if cpu.cy() { cpu.jump_i8(arg); 6 } else { 3 }
-                })
-            )
+            (format!("BC {arg}"), vec![op, arg as u8], Box::new(move |cpu: &mut CPU|{
+                if cpu.cy() { cpu.jump_i8(arg); 6 } else { 3 }
+            }))
         },
 
         0x73 => {
             let arg = cpu.next_i8();
-            (
-                format!("BNC"),
-                vec![op, arg as u8],
-                Box::new(move |cpu: &mut CPU| {
-                    if !cpu.cy() { cpu.jump_i8(arg); 6 } else { 3 }
-                })
-            )
+            (format!("BNC {arg}"), vec![op, arg as u8], Box::new(move |cpu: &mut CPU| {
+                if !cpu.cy() { cpu.jump_i8(arg); 6 } else { 3 }
+            }))
         },
 
         0x74 => {
             let arg = cpu.next_i8();
-            (
-                format!("BE"),
-                vec![op, arg as u8],
-                Box::new(move |cpu: &mut CPU| {
-                    if cpu.z() { cpu.jump_i8(arg); 6 } else { 3 }
-                })
-            )
+            (format!("BE {arg}"), vec![op, arg as u8], Box::new(move |cpu: &mut CPU| {
+                if cpu.z() { cpu.jump_i8(arg); 6 } else { 3 }
+            }))
         },
 
         0x75 => {
             let arg = cpu.next_i8();
-            (
-                format!("BNE"),
-                vec![op, arg as u8],
-                Box::new(move |cpu: &mut CPU| {
-                    if !cpu.z() { cpu.jump_i8(arg); 6 } else { 3 }
-                })
-            )
+            (format!("BNE {arg}"), vec![op, arg as u8], Box::new(move |cpu: &mut CPU| {
+                if !cpu.z() { cpu.jump_i8(arg); 6 } else { 3 }
+            }))
         },
 
-        0x76 => unimplemented!("BNH"),
-        0x77 => unimplemented!("BH"),
-        0x78 => unimplemented!("BN"),
-        0x79 => unimplemented!("BP"),
-        0x7A => unimplemented!("BPE"),
-        0x7B => unimplemented!("BPO"),
-        0x7C => unimplemented!("BLT"),
-        0x7D => unimplemented!("BGE"),
-        0x7E => unimplemented!("BLE"),
-        0x7F => unimplemented!("BGT"),
+        0x76 => {
+            let arg = cpu.next_i8();
+            (format!("BNH {arg}"), vec![op, arg as u8], Box::new(move |cpu: &mut CPU| {
+                if cpu.z() || cpu.cy() { cpu.jump_i8(arg); 6 } else { 3 }
+            }))
+        },
+
+        0x77 => {
+            let arg = cpu.next_i8();
+            (format!("BNH {arg}"), vec![op, arg as u8], Box::new(move |cpu: &mut CPU| {
+                if !(cpu.z() || cpu.cy()) { cpu.jump_i8(arg); 6 } else { 3 }
+            }))
+        },
+
+        0x78 => {
+            let arg = cpu.next_i8();
+            (format!("BN {arg}"), vec![op, arg as u8], Box::new(move|cpu: &mut CPU|{
+                if cpu.s() { cpu.jump_i8(arg); 6 } else { 3 }
+            }))
+        },
+
+        0x79 => {
+            let arg = cpu.next_i8();
+            (format!("BP {arg}"), vec![op, arg as u8], Box::new(move|cpu: &mut CPU|{
+                if !cpu.s() { cpu.jump_i8(arg); 6 } else { 3 }
+            }))
+        },
+
+        0x7A => {
+            let arg = cpu.next_i8();
+            (format!("BPE {arg}"), vec![op, arg as u8], Box::new(move|cpu: &mut CPU|{
+                if cpu.p() { cpu.jump_i8(arg); 6 } else { 3 }
+            }))
+        },
+
+        0x7B => {
+            let arg = cpu.next_i8();
+            (format!("BPE {arg}"), vec![op, arg as u8], Box::new(move|cpu: &mut CPU|{
+                if !cpu.p() { cpu.jump_i8(arg); 6 } else { 3 }
+            }))
+        },
+
+        0x7C => {
+            let arg = cpu.next_i8();
+            (format!("BLT {arg}"), vec![op, arg as u8], Box::new(move|cpu: &mut CPU|{
+                if cpu.s() ^ cpu.z() { cpu.jump_i8(arg); 6 } else { 3 }
+            }))
+        },
+
+        0x7D => {
+            let arg = cpu.next_i8();
+            (format!("BGE {arg}"), vec![op, arg as u8], Box::new(move|cpu: &mut CPU|{
+                if !(cpu.s() ^ cpu.v()) { cpu.jump_i8(arg); 6 } else { 3 }
+            }))
+        },
+
+        0x7E => {
+            let arg = cpu.next_i8();
+            (format!("BLT {arg}"), vec![op, arg as u8], Box::new(move|cpu: &mut CPU|{
+                if cpu.z() || (cpu.s() ^ cpu.v()) { cpu.jump_i8(arg); 6 } else { 3 }
+            }))
+        },
+
+        0x7F => {
+            let arg = cpu.next_i8();
+            (format!("BLT {arg}"), vec![op, arg as u8], Box::new(move|cpu: &mut CPU|{
+                if !(cpu.z() || (cpu.s() ^ cpu.v())) { cpu.jump_i8(arg); 6 } else { 3 }
+            }))
+        },
 
         0x80 => {
             let [arg, mode, code, mem] = get_mode_code_mem(cpu);
@@ -563,7 +617,7 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
             let [arg, mode, code, mem] = get_mode_code_mem(cpu);
             match (code, mode) {
                 (0b000, 0b11) => {
-                    let src = cpu.next_u16() as i16;
+                    let src = cpu.next_u8() as i16;
                     let [lo, hi] = src.to_le_bytes();
                     (format!("ADDW {}, {src:04X}", register_name_u16(mem)), vec![op, arg, lo, hi], Box::new(move |cpu: &mut CPU|{
                         let dst = cpu.register_value_u16(mem) as i16;
@@ -577,15 +631,7 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                     }))
                 },
                 (0b000, _)    => {
-                    // FIXME: reads 1 byte too many
-                    //let [src, bytes] = match mode {
-                        //0b00 => {},
-                        //0b01 => {},
-                        //0b10 => {},
-                        //_ => unreachable!()
-                    //};
-
-                    let src = cpu.next_u16() as i16;
+                    let src = cpu.next_u8() as i16;
                     let [lo, hi] = src.to_le_bytes();
                     (format!("ADDW {}, mem", register_name_u16(mem)), vec![op, arg, lo, hi], Box::new(move |cpu: &mut CPU|{
                         let addr = cpu.memory_address(mode, mem);
@@ -617,25 +663,21 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                 (0b110, _) => (format!("XORW"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
                     unimplemented!()
                 })),
-                // FIXME: reads 1 byte too many
                 (0b111, 0b11) => {
-                    let src = cpu.next_u16() as i16;
-                    let [lo, hi] = src.to_le_bytes();
-                    (format!("CMPW {}, {src:04X}", register_name_u16(mem)), vec![op, arg, lo, hi], Box::new(move |cpu: &mut CPU|{
+                    let src = cpu.next_u8();
+                    (format!("CMPW {}, {src:04X}", register_name_u16(mem)), vec![op, arg, src], Box::new(move |cpu: &mut CPU|{
                         let dst = cpu.register_value_u16(mem) as i16;
                         let (result, unsigned_overflow) = (dst as u16).overflowing_sub(src as u16);
-                        let (_, signed_overflow) = dst.overflowing_sub(src);
+                        let (_, signed_overflow) = dst.overflowing_sub(src as i16);
                         cpu.set_pzs(result);
                         cpu.set_cy(unsigned_overflow);
                         cpu.set_v(signed_overflow);
                         2
                     }))
                 },
-                // FIXME: reads 1 byte too many
                 (0b111, _) => {
-                    let src = cpu.next_u16() as i16;
-                    let [lo, hi] = src.to_le_bytes();
-                    (format!("CMPW {}, mem", register_name_u16(mem)), vec![op, arg, lo, hi], Box::new(move |cpu: &mut CPU|{
+                    let src = cpu.next_u8();
+                    (format!("CMPW {}, mem", register_name_u16(mem)), vec![op, arg, src], Box::new(move |cpu: &mut CPU|{
                         let addr = cpu.memory_address(mode, mem);
                         let dst = cpu.read_u16(addr);
                         let (result, unsigned_overflow) = (dst as u16).overflowing_sub(src as u16);
