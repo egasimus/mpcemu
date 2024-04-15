@@ -147,7 +147,7 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
         0x1D => unimplemented!("SUBC"),
 
         0x1E => (format!("PUSH DS0"), vec![op], Box::new(push_ds0)),
-        0x1F => (format!("POP DS0"), vec![op], Box::new(pop_ds0)),
+        0x1F => (format!("POP DS0"),  vec![op], Box::new(pop_ds0)),
 
         0x20 => unimplemented!("AND"),
         0x21 => unimplemented!("AND"),
@@ -753,13 +753,43 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
 
         0x9F => unimplemented!("MOV AH, PSW"),
 
-        0xA0 => unimplemented!("MOV al m"),
+        0xA0 => {
+            let addr = cpu.next_u16();
+            let [lo, hi] = addr.to_le_bytes();
+            (format!("MOV AL, {addr:04X}"), vec![op, lo, hi], Box::new(move |cpu: &mut CPU|{
+                let value = cpu.read_u8(addr);
+                cpu.set_al(value);
+                5
+            }))
+        },
 
-        0xA1 => unimplemented!("MOV aw m"),
+        0xA1 => {
+            let addr = cpu.next_u16();
+            let [lo, hi] = addr.to_le_bytes();
+            (format!("MOV AL, {addr:04X}"), vec![op, lo, hi], Box::new(move |cpu: &mut CPU|{
+                let value = cpu.read_u16(addr);
+                cpu.set_aw(value);
+                if addr % 2 == 1 { 7 } else { 5 }
+            }))
+        },
 
-        0xA2 => unimplemented!("MOV m al"),
+        0xA2 => {
+            let addr = cpu.next_u16();
+            let [lo, hi] = addr.to_le_bytes();
+            (format!("MOV {addr:04X}, AL"), vec![op, lo, hi], Box::new(move |cpu: &mut CPU|{
+                cpu.write_u8(addr, cpu.al());
+                3
+            }))
+        },
 
-        0xA3 => unimplemented!("MOV m aw"),
+        0xA3 => {
+            let addr = cpu.next_u16();
+            let [lo, hi] = addr.to_le_bytes();
+            (format!("MOV {addr:04X}, AW"), vec![op, lo, hi], Box::new(move |cpu: &mut CPU|{
+                cpu.write_u16(addr, cpu.aw());
+                if addr % 2 == 1 { 5 } else { 3 }
+            }))
+        },
 
         0xA4 => unimplemented!("MOVBK b"),
 
