@@ -6,6 +6,7 @@ mod flag;
 mod mem;
 mod math;
 mod shift;
+mod inst;
 #[cfg(test)] mod test;
 
 use self::{
@@ -253,12 +254,28 @@ impl CPU {
 
 }
 
-fn get_mode_reg_mem (cpu: &mut CPU) -> [u8;4] {
+pub fn get_mode_reg_mem (cpu: &mut CPU) -> [u8;4] {
     let arg  = cpu.next_u8();
     let mode = (arg & B_MODE) >> 6;
     let reg  = (arg & B_REG)  >> 3;
     let mem  = (arg & B_MEM)  >> 0;
     [arg, mode, reg, mem]
+}
+
+pub fn get_mode_sreg_mem (cpu: &mut CPU) -> [u8;4] {
+    let arg  = cpu.next_u8();
+    let mode = (arg & B_MODE) >> 6;
+    let sreg = (arg & B_SREG) >> 3;
+    let mem  = (arg & B_MEM)  >> 0;
+    [arg, mode, sreg, mem]
+}
+
+pub fn get_mode_code_mem (cpu: &mut CPU) -> [u8;4] {
+    let arg  = cpu.next_u8();
+    let mode = (arg & B_MODE) >> 6;
+    let code = (arg & B_REG)  >> 3;
+    let mem  = (arg & B_MEM)  >> 0;
+    [arg, mode, code, mem]
 }
 
 mpcemu_core::impl_instruction_set! {
@@ -1287,9 +1304,52 @@ mpcemu_core::impl_instruction_set! {
 
     0xFD => set1_dir,
 
-    0xFE => group2_b,
+    0xFE => unimplemented!("group2_b"),
 
-    0xFF => group2_w,
+    0xFF => group2_w (cpu) {
+        let arg  = state.next_u8();
+        let mode = (arg & B_MODE) >> 6;
+        let code = (arg & B_REG)  >> 3;
+        let mem  = (arg & B_MEM)  >> 0;
+        match code {
+            0b000 => {
+                unimplemented!("inc");
+            },
+            0b001 => {
+                unimplemented!("dec");
+            },
+            0b010 => {
+                unimplemented!("call regptr16/memptr16");
+            },
+            0b011 => {
+                let addr = state.memory_address(mode, mem) as i32;
+                let pc = state.read_u16(addr as u16 + 0);
+                let ps = state.read_u16(addr as u16 + 2);
+                state.set_sp(state.sp() - 2);
+                state.write_u16(state.sp(), state.ps());
+                state.set_ps(ps);
+                state.set_sp(state.sp() - 2);
+                state.write_u16(state.sp(), state.pc());
+                state.set_pc(pc);
+                if addr % 2 == 0 { 15 } else { 23 }
+            },
+            0b100 => {
+                unimplemented!("br");
+            },
+            0b101 => {
+                unimplemented!("br");
+            },
+            0b110 => {
+                unimplemented!("push");
+            },
+            0b111 => {
+                panic!("undefined instruction 0b111")
+            },
+            _ => {
+                unreachable!("imm code {code:b}");
+            }
+        }
+    },
 
 }
 
@@ -1303,56 +1363,6 @@ fn unimplemented (state: &mut CPU) -> u64 {
     unimplemented!("opcode {:x}", state.opcode())
 }
 
-#[inline]
-fn group2_b (state: &mut CPU) -> u64 {
-    unimplemented!();
-}
-
-#[inline]
-fn group2_w (state: &mut CPU) -> u64 {
-    let arg  = state.next_u8();
-    let mode = (arg & B_MODE) >> 6;
-    let code = (arg & B_REG)  >> 3;
-    let mem  = (arg & B_MEM)  >> 0;
-    match code {
-        0b000 => {
-            unimplemented!("inc");
-        },
-        0b001 => {
-            unimplemented!("dec");
-        },
-        0b010 => {
-            unimplemented!("call regptr16/memptr16");
-        },
-        0b011 => {
-            let addr = state.memory_address(mode, mem) as i32;
-            let pc = state.read_u16(addr as u16 + 0);
-            let ps = state.read_u16(addr as u16 + 2);
-            state.set_sp(state.sp() - 2);
-            state.write_u16(state.sp(), state.ps());
-            state.set_ps(ps);
-            state.set_sp(state.sp() - 2);
-            state.write_u16(state.sp(), state.pc());
-            state.set_pc(pc);
-            if addr % 2 == 0 { 15 } else { 23 }
-        },
-        0b100 => {
-            unimplemented!("br");
-        },
-        0b101 => {
-            unimplemented!("br");
-        },
-        0b110 => {
-            unimplemented!("push");
-        },
-        0b111 => {
-            panic!("undefined instruction 0b111")
-        },
-        _ => {
-            unreachable!("imm code {code:b}");
-        }
-    }
-}
 
 #[inline]
 fn group3_instruction (state: &mut CPU) -> u64 {
