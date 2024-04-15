@@ -503,11 +503,61 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
         0x7E => unimplemented!("BLE"),
         0x7F => unimplemented!("BGT"),
 
-        0x80 => (format!("IMM"), vec![op], Box::new(imm_b)),
+        0x80 => {
+            let [arg, mode, code, mem] = get_mode_code_mem(cpu);
+            match (code, mode) {
+                (0b000, _) => unimplemented!("ADD"),
+                (0b001, _) => unimplemented!("OR"),
+                (0b010, _) => unimplemented!("ADDC"),
+                (0b011, _) => unimplemented!("SUB"),
+                (0b100, _) => unimplemented!("AND"),
+                (0b101, _) => unimplemented!("SUB"),
+                (0b110, _) => unimplemented!("XOR"),
+                (0b111, 0b11) => unimplemented!("cmp reg, imm"),
+                (0b111, _) => (format!("CMP"), vec![op, arg], Box::new(move|cpu: &mut CPU|{
+                    let addr = cpu.memory_address(mode, mem);
+                    let dst = cpu.read_u8(addr);
+                    let src = cpu.next_u8();
+                    let (result, unsigned_overflow) = dst.overflowing_sub(src);
+                    let (_, signed_overflow) = (dst as i8).overflowing_sub(src as i8);
+                    cpu.set_pzs(result as u16);
+                    cpu.set_cy(unsigned_overflow);
+                    cpu.set_v(signed_overflow);
+                    if addr % 2 == 0 { 6 } else { 8 }
+                })),
+                _ => unreachable!()
+            }
+        },
 
-        0x81 => (format!("IMM"), vec![op], Box::new(imm_w)),
+        0x81 => {
+            let [arg, mode, code, mem] = get_mode_code_mem(cpu);
+            match (code, mode) {
+                (0b000, _) => unimplemented!("ADDW"),
+                (0b001, _) => unimplemented!("ORW"),
+                (0b010, _) => unimplemented!("ADDCW"),
+                (0b011, _) => unimplemented!("SUBW"),
+                (0b100, _) => unimplemented!("ANDW"),
+                (0b101, _) => unimplemented!("SUBW"),
+                (0b110, _) => unimplemented!("XORW"),
+                (0b111, _) => unimplemented!("CMPW"),
+                _ => unreachable!()
+            }
+        },
 
-        0x82 => (format!("IMM"), vec![op], Box::new(imm_b_s)),
+        0x82 => {
+            let [arg, mode, code, mem] = get_mode_code_mem(cpu);
+            match (code, mode) {
+                (0b000, _) => unimplemented!("ADD"),
+                (0b001, _) => unimplemented!("OR"),
+                (0b010, _) => unimplemented!("ADDC"),
+                (0b011, _) => unimplemented!("SUB"),
+                (0b100, _) => unimplemented!("AND"),
+                (0b101, _) => unimplemented!("SUB"),
+                (0b110, _) => unimplemented!("XOR"),
+                (0b111, _) => unimplemented!("CMP"),
+                _ => unreachable!()
+            }
+        },
 
         0x83 => {
             let [arg, mode, code, mem] = get_mode_code_mem(cpu);
@@ -1007,11 +1057,12 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
             let [olo, ohi] = offset.to_le_bytes();
             let segment    = cpu.next_u16();
             let [slo, shi] = segment.to_le_bytes();
-            (format!("BR {segment:04X}:{offset:04X}"), vec![op, olo, ohi, slo, shi], Box::new(move |cpu: &mut CPU| {
-                cpu.set_pc(offset);
-                cpu.set_ps(segment);
-                7
-            }))
+            (format!("BR {segment:04X}:{offset:04X}"), vec![op, olo, ohi, slo, shi],
+                Box::new(move |cpu: &mut CPU| {
+                    cpu.set_pc(offset);
+                    cpu.set_ps(segment);
+                    7
+                }))
         },
 
         0xEB => {
@@ -1144,7 +1195,34 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                 (0b100, _) => unimplemented!("muluw rm"),
                 (0b101, _) => unimplemented!("mulw rm"),
                 (0b110, _) => unimplemented!("divuw rm"),
-                (0b111, _) => unimplemented!("divw rm"),
+                (0b111, 0b11) => (format!("DIVW"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
+                    let [b0, b1] = cpu.dw().to_le_bytes();
+                    let [b2, b3] = cpu.aw().to_le_bytes();
+                    let t = i32::from_le_bytes([b0, b1, b2, b3]);
+                    let mode = (arg & 0b11000000) >> 6;
+                    let dst = cpu.register_value_u16((arg & B_REG) >> 3) as i32;
+                    if (((t / dst) > 0) && ((t / dst) <= 0x7FFF)) ||
+                       (((t / dst) < 0) && ((t / dst) > (0 - 0x7FFFF - 1)))
+                    {
+                        cpu.set_dw((t % dst) as u16);
+                        cpu.set_aw((t / dst) as u16);
+                    }
+                    cpu.push_u16(cpu.psw());
+                    cpu.set_ie(false);
+                    cpu.set_brk(false);
+                    //cpu.push_u16(cpu.ps());
+                    //cpu.set_ps(u16::from_le_bytes([0x2, 0x3]));
+                    //cpu.push_u16(cpu.pc());
+                    //cpu.set_pc(u16::from_le_bytes([0x0, 0x1]));
+                    24
+                })),
+                (0b111, _) => (format!("DIVW"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
+                    let [b0, b1] = cpu.dw().to_le_bytes();
+                    let [b2, b3] = cpu.aw().to_le_bytes();
+                    let t = i32::from_le_bytes([b0, b1, b2, b3]);
+                    let mode = (arg & 0b11000000) >> 6;
+                    unimplemented!();
+                })),
                 _ => panic!("invalid group1 instruction {code:b}"),
             }
         },
@@ -1214,123 +1292,6 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
 }
 
 #[inline]
-pub fn imm_b (state: &mut CPU) -> u64 {
-    let arg  = state.next_u8();
-    let mode = (arg & B_MODE) >> 6;
-    let code = (arg & B_REG)  >> 3;
-    let mem  = (arg & B_MEM)  >> 0;
-    match code {
-        0b000 => {
-            unimplemented!("add");
-        },
-        0b001 => {
-            unimplemented!("or");
-        },
-        0b010 => {
-            unimplemented!("addc");
-        },
-        0b011 => {
-            unimplemented!("sub");
-        },
-        0b100 => {
-            unimplemented!("and");
-        },
-        0b101 => {
-            unimplemented!("sub");
-        },
-        0b110 => {
-            unimplemented!("xor");
-        },
-        0b111 => {
-            if mode == 0b11 {
-                unimplemented!("cmp reg, imm");
-                2
-            } else {
-                let addr = state.memory_address(mode, mem);
-                let dst = state.read_u8(addr);
-                let src = state.next_u8();
-                let (result, unsigned_overflow) = dst.overflowing_sub(src);
-                let (_, signed_overflow) = (dst as i8).overflowing_sub(src as i8);
-                state.set_pzs(result as u16);
-                state.set_cy(unsigned_overflow);
-                state.set_v(signed_overflow);
-                if addr % 2 == 0 { 6 } else { 8 }
-            }
-        },
-        _ => {
-            unreachable!("imm code {code:b}");
-        }
-    }
-}
-
-#[inline]
-pub fn imm_w (state: &mut CPU) -> u64 {
-    unimplemented!();
-}
-
-#[inline]
-pub fn imm_b_s (state: &mut CPU) -> u64 {
-    unimplemented!();
-}
-
-
-pub fn group1_w (state: &mut CPU) -> u64 {
-    let arg = state.next_u8();
-    let code = (arg & B_REG) >> 3;
-    match code {
-        0b000 => {
-            unimplemented!("test rm");
-        },
-        0b001 => {
-            panic!("undefined group1 instruction");
-        },
-        0b010 => {
-            unimplemented!("not rm");
-        },
-        0b011 => {
-            unimplemented!("neg rm");
-        },
-        0b100 => {
-            unimplemented!("mulu rm");
-        },
-        0b101 => {
-            unimplemented!("mul rm");
-        },
-        0b110 => {
-            unimplemented!("divu rm");
-        },
-        0b111 => {
-            let [b0, b1] = state.dw().to_le_bytes();
-            let [b2, b3] = state.aw().to_le_bytes();
-            let t = i32::from_le_bytes([b0, b1, b2, b3]);
-            let mode = (arg & 0b11000000) >> 6;
-            if mode == 0b11 {
-                let dst = state.register_value_u16((arg & B_REG) >> 3) as i32;
-                if (((t / dst) > 0) && ((t / dst) <= 0x7FFF)) ||
-                   (((t / dst) < 0) && ((t / dst) > (0 - 0x7FFFF - 1)))
-                {
-                    state.set_dw((t % dst) as u16);
-                    state.set_aw((t / dst) as u16);
-                }
-                state.push_u16(state.psw());
-                state.set_ie(false);
-                state.set_brk(false);
-                //state.push_u16(state.ps());
-                //state.set_ps(u16::from_le_bytes([0x2, 0x3]));
-                //state.push_u16(state.pc());
-                //state.set_pc(u16::from_le_bytes([0x0, 0x1]));
-                24
-            } else {
-                unimplemented!();
-            }
-        },
-        _ => {
-            unreachable!("group1 code {code:b}");
-        }
-    }
-}
-
-#[inline]
 pub fn get_mode_reg_mem (cpu: &mut CPU) -> [u8;4] {
     let arg  = cpu.next_u8();
     let mode = (arg & B_MODE) >> 6;
@@ -1370,13 +1331,8 @@ pub fn sign_extend_32 (data: u32, size: u32) -> i32 {
 }
 
 #[inline]
-fn nop (state: &mut CPU) -> u64 {
+fn nop (_: &mut CPU) -> u64 {
     1
-}
-
-#[inline]
-fn unimplemented (state: &mut CPU) -> u64 {
-    unimplemented!("opcode {:x}", state.opcode())
 }
 
 #[inline]
