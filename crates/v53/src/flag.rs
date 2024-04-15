@@ -1,4 +1,4 @@
-use super::CPU;
+use crate::*;
 
 macro_rules! define_flag {
     ($(#[$attr:meta])* $getter:ident $setter:ident $bit:literal) => {

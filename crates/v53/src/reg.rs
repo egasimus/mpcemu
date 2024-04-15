@@ -1,4 +1,4 @@
-use super::*;
+use crate::*;
 
 macro_rules! define_general_purpose_register {
     (

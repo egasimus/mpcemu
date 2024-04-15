@@ -1,4 +1,4 @@
-use super::CPU;
+use crate::*;
 
 #[test]
 /// Add the contents of memory 0:50H (word data)
