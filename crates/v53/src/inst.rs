@@ -1085,8 +1085,69 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
         0xF4 => unimplemented!("HALT"),
         0xF5 => unimplemented!("NOT1"),
 
-        0xF6 => (format!("GROUP1"), vec![op], Box::new(group1_b)),
-        0xF7 => (format!("GROUP2"), vec![op], Box::new(group1_w)),
+        0xF6 => {
+            let [arg, mode, code, mem] = get_mode_code_mem(cpu);
+            match (code, mode) {
+                (0b000, _) => unimplemented!("test rm"),
+                (0b001, _) => panic!("undefined group1 instruction"),
+                (0b010, _) => unimplemented!("not rm"),
+                (0b011, _) => unimplemented!("neg rm"),
+                (0b100, _) => unimplemented!("mulu rm"),
+                (0b101, _) => unimplemented!("mul rm"),
+                (0b110, _) => unimplemented!("divu rm"),
+                (0b111, 0b11) => (format!("DIV"), vec![op, arg], Box::new(move|cpu: &mut CPU|{
+                    let t = cpu.aw() as i16;
+                    let dst = cpu.register_value_u8((arg & B_REG) >> 3) as i16;
+                    if (((t / dst) > 0) && ((t / dst) <= 0x7F)) ||
+                       (((t / dst) < 0) && ((t / dst) > (0 - 0x7F - 1)))
+                    {
+                        cpu.set_ah((t % dst) as u8);
+                        cpu.set_al((t / dst) as u8);
+                    }
+                    cpu.push_u16(cpu.psw());
+                    cpu.set_ie(false);
+                    cpu.set_brk(false);
+                    //cpu.push_u16(cpu.ps());
+                    //cpu.set_ps(u16::from_le_bytes([0x2, 0x3]));
+                    //cpu.push_u16(cpu.pc());
+                    //cpu.set_pc(u16::from_le_bytes([0x0, 0x1]));
+                    17
+                })),
+                (0b111, _) => (format!("DIV"), vec![op, arg], Box::new(move|cpu: &mut CPU|{
+                    let t    = cpu.aw() as i16;
+                    let addr = cpu.memory_address(mode, mem);
+                    let dst  = sign_extend_16(cpu.read_u8(addr) as u16, 8);
+                    println!("\n\naddr={addr:x} dst={dst:b} t={t:b}\n");
+                    cpu.dump();
+                    if (((t / dst) > 0) && ((t / dst) <= 0x7F)) ||
+                       (((t / dst) < 0) && ((t / dst) > (0 - 0x7F - 1)))
+                    {
+                        cpu.set_ah((t % dst) as u8);
+                        cpu.set_al((t / dst) as u8);
+                    }
+                    cpu.push_u16(cpu.psw());
+                    cpu.set_ie(false);
+                    cpu.set_brk(false);
+                    20
+                })),
+                _ => panic!("invalid group1 instruction {code:b}"),
+            }
+        },
+
+        0xF7 => {
+            let [arg, mode, code, mem] = get_mode_code_mem(cpu);
+            match (code, mode) {
+                (0b000, _) => unimplemented!("testw rm"),
+                (0b001, _) => panic!("undefined group1 instruction"),
+                (0b010, _) => unimplemented!("notw rm"),
+                (0b011, _) => unimplemented!("negw rm"),
+                (0b100, _) => unimplemented!("muluw rm"),
+                (0b101, _) => unimplemented!("mulw rm"),
+                (0b110, _) => unimplemented!("divuw rm"),
+                (0b111, _) => unimplemented!("divw rm"),
+                _ => panic!("invalid group1 instruction {code:b}"),
+            }
+        },
 
         0xF8 => (format!("CLR1 CY"), vec![op], Box::new(clr1_cy)),
         0xF9 => (format!("SET1 CY"), vec![op], Box::new(set1_cy)),
@@ -1212,73 +1273,6 @@ pub fn imm_b_s (state: &mut CPU) -> u64 {
     unimplemented!();
 }
 
-pub fn group1_b (state: &mut CPU) -> u64 {
-    let arg = state.next_u8();
-    let code = (arg & B_REG) >> 3;
-    match code {
-        0b000 => {
-            unimplemented!("test rm");
-        },
-        0b001 => {
-            panic!("undefined group1 instruction");
-        },
-        0b010 => {
-            unimplemented!("not rm");
-        },
-        0b011 => {
-            unimplemented!("neg rm");
-        },
-        0b100 => {
-            unimplemented!("mulu rm");
-        },
-        0b101 => {
-            unimplemented!("mul rm");
-        },
-        0b110 => {
-            unimplemented!("divu rm");
-        },
-        0b111 => {
-            let t = state.aw() as i16;
-            let mode = (arg & 0b11000000) >> 6;
-            if mode == 0b11 {
-                let dst = state.register_value_u8((arg & B_REG) >> 3) as i16;
-                if (((t / dst) > 0) && ((t / dst) <= 0x7F)) ||
-                   (((t / dst) < 0) && ((t / dst) > (0 - 0x7F - 1)))
-                {
-                    state.set_ah((t % dst) as u8);
-                    state.set_al((t / dst) as u8);
-                }
-                state.push_u16(state.psw());
-                state.set_ie(false);
-                state.set_brk(false);
-                //state.push_u16(state.ps());
-                //state.set_ps(u16::from_le_bytes([0x2, 0x3]));
-                //state.push_u16(state.pc());
-                //state.set_pc(u16::from_le_bytes([0x0, 0x1]));
-                17
-            } else {
-                let mem  = arg & 0b00000111;
-                let addr = state.memory_address(mode, mem);
-                let dst  = sign_extend_16(state.read_u8(addr) as u16, 8);
-                println!("\n\naddr={addr:x} dst={dst:b} t={t:b}\n");
-                state.dump();
-                if (((t / dst) > 0) && ((t / dst) <= 0x7F)) ||
-                   (((t / dst) < 0) && ((t / dst) > (0 - 0x7F - 1)))
-                {
-                    state.set_ah((t % dst) as u8);
-                    state.set_al((t / dst) as u8);
-                }
-                state.push_u16(state.psw());
-                state.set_ie(false);
-                state.set_brk(false);
-                20
-            }
-        },
-        _ => {
-            unreachable!("group1 code {code:b}");
-        }
-    }
-}
 
 pub fn group1_w (state: &mut CPU) -> u64 {
     let arg = state.next_u8();
@@ -1383,56 +1377,6 @@ fn nop (state: &mut CPU) -> u64 {
 #[inline]
 fn unimplemented (state: &mut CPU) -> u64 {
     unimplemented!("opcode {:x}", state.opcode())
-}
-
-#[inline]
-pub fn shift_w (state: &mut CPU) -> u64 {
-    let arg = state.next_u8();
-    let code = (arg & B_REG) >> 3;
-    let source = get_source_word(state, arg);
-    match code {
-        0b000 => {
-            unimplemented!("rol");
-        },
-        0b001 => {
-            unimplemented!("ror");
-        },
-        0b010 => {
-            let cy  = state.cy() as u16;
-            let msb = (source & W15) >> 15;
-            let nsb = (source & W14) >> 14;
-            let rotated = source << 1 | cy;
-            set_source_word(state, arg, rotated);
-            state.set_cy(msb > 0);
-            state.set_v(msb != nsb);
-            2
-        },
-        0b011 => {
-            unimplemented!("rorc");
-        },
-        0b100 => {
-            unimplemented!("shl");
-        },
-        0b101 => {
-            let lsb        = source & W0;
-            let msb_before = (source & W15) >> 15;
-            let shifted    = source >> 1;
-            let msb_after  = (source & W15) >> 15;
-            set_source_word(state, arg, shifted);
-            state.set_cy(lsb > 0);
-            state.set_v(msb_before != msb_after);
-            2
-        },
-        0b110 => {
-            panic!("invalid shift code 0b110");
-        },
-        0b111 => {
-            unimplemented!("shra");
-        },
-        _ => {
-            unreachable!("shift code {code:b}");
-        }
-    }
 }
 
 #[inline]
