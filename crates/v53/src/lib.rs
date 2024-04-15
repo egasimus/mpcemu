@@ -91,7 +91,8 @@ impl CPU {
         self.opcode = opcode;
         let (name, bytes, instruction) = v53_instruction(self, opcode);
         if debug {
-            print!("\n\n{:10} {:05X}  {opcode:02X}  {name:10}  {name}", self.clock, self.pc);
+            print!("\n\n{:10} {:05X}  {name:15}  {:02X?}",
+                self.clock, self.pc, &bytes);
             print!("\n           AW={:04X} BW={:04X} CW={:04X} DW={:04X} PS={:04X} SS={:04X} DS0={:04X} DS1={:04X} IX={:04X} IY={:04X}",
                 self.aw(), self.bw(), self.cw(), self.dw(),
                 self.ps(), self.ss(), self.ds0(), self.ds1(),

@@ -93,9 +93,47 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
         0x0C => unimplemented!("Bitwise OR b ia"),
         0x0D => unimplemented!("Bitwise OR w ia"),
 
-        0x0E => (format!("Push PS to stack"), vec![op], Box::new(push_ps)),
+        0x0E => (format!("PUSH PS"), vec![op], Box::new(push_ps)),
 
-        0x0F => (format!("GROUP3"), vec![op], Box::new(group3_instruction)),
+        0x0F => {
+            let arg = cpu.next_u8();
+            match arg {
+
+                0xE0 => (format!("BRKXA"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
+                    let addr = cpu.next_u8() as usize;
+                    //panic!("{addr} {:x?}", &cpu.memory[addr*4..addr*4+4]);
+                    cpu.pc = u16::from_le_bytes([
+                        cpu.get_byte(addr as usize * 4 + 0),
+                        cpu.get_byte(addr as usize * 4 + 1),
+                    ]);
+                    cpu.ps = u16::from_le_bytes([
+                        cpu.get_byte(addr as usize * 4 + 2),
+                        cpu.get_byte(addr as usize * 4 + 3),
+                    ]);
+                    cpu.set_xa(true);
+                    //println!("\n==========BRKXA {:x} {:x} {:x} {:x}", addr, cpu.pc, cpu.ps, cpu.program_address());
+                    // TODO: set XA (internal I/O address: FF80H)
+                    12
+                })),
+
+                0xF0 => (format!("RETXA"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
+                    let addr = cpu.next_u8();
+                    cpu.pc = u16::from_le_bytes([
+                        cpu.get_byte(addr as usize * 4 + 0),
+                        cpu.get_byte(addr as usize * 4 + 1),
+                    ]);
+                    cpu.ps = u16::from_le_bytes([
+                        cpu.get_byte(addr as usize * 4 + 2),
+                        cpu.get_byte(addr as usize * 4 + 3),
+                    ]);
+                    cpu.set_xa(false);
+                    // TODO: reset XA
+                    12
+                })),
+
+                _ => unimplemented!("unimplemented Group 3 instruction {arg}")
+            }
+        },
 
         0x10 => unimplemented!("ADDC"),
         0x11 => unimplemented!("ADDC"),
@@ -471,7 +509,86 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
 
         0x82 => (format!("IMM"), vec![op], Box::new(imm_b_s)),
 
-        0x83 => (format!("IMM"), vec![op], Box::new(imm_w_s)),
+        0x83 => {
+            let [arg, mode, code, mem] = get_mode_code_mem(cpu);
+            match code {
+
+                0b000 => (format!("ADD"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
+                    if mode == 0b11 {
+                        let dst = cpu.register_value_u16(mem) as i16;
+                        let src = cpu.next_u16() as i16;
+                        let (result, unsigned_overflow) = (dst as u16).overflowing_add(src as u16);
+                        let (_, signed_overflow) = dst.overflowing_add(src);
+                        cpu.set_register_u16(mem, result);
+                        cpu.set_pzs(result);
+                        cpu.set_cy(unsigned_overflow);
+                        cpu.set_v(signed_overflow);
+                        2
+                    } else {
+                        let addr = cpu.memory_address(mode, mem);
+                        let dst = cpu.read_u16(addr);
+                        let src = cpu.next_u16();
+                        let (result, unsigned_overflow) = (dst as u16).overflowing_add(src as u16);
+                        let (_, signed_overflow) = dst.overflowing_add(src);
+                        cpu.set_register_u16(mem, result);
+                        cpu.set_pzs(result);
+                        cpu.set_cy(unsigned_overflow);
+                        cpu.set_v(signed_overflow);
+                        if addr % 2 == 0 { 6 } else { 8 }
+                    }
+                })),
+
+                0b001 => (format!("OR"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
+                    unimplemented!()
+                })),
+
+                0b010 => (format!("ADDC"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
+                    unimplemented!()
+                })),
+
+                0b011 => (format!("SUB"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
+                    unimplemented!()
+                })),
+
+                0b100 => (format!("AND"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
+                    unimplemented!()
+                })),
+
+                0b101 => (format!("SUB"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
+                    unimplemented!()
+                })),
+
+                0b110 => (format!("XOR"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
+                    unimplemented!()
+                })),
+
+                0b111 => (format!("CMP"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
+                    if mode == 0b11 {
+                        let dst = cpu.register_value_u16(mem) as i16;
+                        let src = cpu.next_u16() as i16;
+                        let (result, unsigned_overflow) = (dst as u16).overflowing_sub(src as u16);
+                        let (_, signed_overflow) = dst.overflowing_sub(src);
+                        cpu.set_pzs(result);
+                        cpu.set_cy(unsigned_overflow);
+                        cpu.set_v(signed_overflow);
+                        2
+                    } else {
+                        let addr = cpu.memory_address(mode, mem);
+                        let dst = cpu.read_u16(addr);
+                        let src = cpu.next_u16();
+                        let (result, unsigned_overflow) = (dst as u16).overflowing_sub(src as u16);
+                        let (_, signed_overflow) = dst.overflowing_sub(src);
+                        cpu.set_pzs(result);
+                        cpu.set_cy(unsigned_overflow);
+                        cpu.set_v(signed_overflow);
+                        if addr % 2 == 0 { 6 } else { 8 }
+                    }
+                })),
+
+                _ => unreachable!()
+
+            }
+        },
 
         0x84 => unimplemented!("TEST"),
 
@@ -764,7 +881,7 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
         },
 
         0xD2 => unimplemented!("SHIFT b, port"),
-        0xD3 => unimplemented!("SHIFT b, port"),
+        0xD3 => unimplemented!("SHIFT w, port"),
         0xD4 => unimplemented!("CVTBD"),
         0xD5 => unimplemented!("CVTDB"),
         0xD6 => unimplemented!("UNDEF"),
@@ -1065,84 +1182,6 @@ pub fn imm_b_s (state: &mut CPU) -> u64 {
     unimplemented!();
 }
 
-#[inline]
-pub fn imm_w_s (state: &mut CPU) -> u64 {
-    let arg  = state.next_u8();
-    let mode = (arg & B_MODE) >> 6;
-    let code = (arg & B_REG)  >> 3;
-    let mem  = (arg & B_MEM)  >> 0;
-    // FIXME: sign extend https://en.wikipedia.org/wiki/Sign_extension
-    match code {
-        0b000 => {
-            if mode == 0b11 {
-                let dst = state.register_value_u16(mem) as i16;
-                let src = state.next_u16() as i16;
-                let (result, unsigned_overflow) = (dst as u16).overflowing_add(src as u16);
-                let (_, signed_overflow) = dst.overflowing_add(src);
-                state.set_register_u16(mem, result);
-                state.set_pzs(result);
-                state.set_cy(unsigned_overflow);
-                state.set_v(signed_overflow);
-                2
-            } else {
-                let addr = state.memory_address(mode, mem);
-                let dst = state.read_u16(addr);
-                let src = state.next_u16();
-                let (result, unsigned_overflow) = (dst as u16).overflowing_add(src as u16);
-                let (_, signed_overflow) = dst.overflowing_add(src);
-                state.set_register_u16(mem, result);
-                state.set_pzs(result);
-                state.set_cy(unsigned_overflow);
-                state.set_v(signed_overflow);
-                if addr % 2 == 0 { 6 } else { 8 }
-            }
-        },
-        0b001 => {
-            unimplemented!("or");
-        },
-        0b010 => {
-            unimplemented!("addc");
-        },
-        0b011 => {
-            unimplemented!("sub");
-        },
-        0b100 => {
-            unimplemented!("and");
-        },
-        0b101 => {
-            unimplemented!("sub");
-        },
-        0b110 => {
-            unimplemented!("xor");
-        },
-        0b111 => {
-            if mode == 0b11 {
-                let dst = state.register_value_u16(mem) as i16;
-                let src = state.next_u16() as i16;
-                let (result, unsigned_overflow) = (dst as u16).overflowing_sub(src as u16);
-                let (_, signed_overflow) = dst.overflowing_sub(src);
-                state.set_pzs(result);
-                state.set_cy(unsigned_overflow);
-                state.set_v(signed_overflow);
-                2
-            } else {
-                let addr = state.memory_address(mode, mem);
-                let dst = state.read_u16(addr);
-                let src = state.next_u16();
-                let (result, unsigned_overflow) = (dst as u16).overflowing_sub(src as u16);
-                let (_, signed_overflow) = dst.overflowing_sub(src);
-                state.set_pzs(result);
-                state.set_cy(unsigned_overflow);
-                state.set_v(signed_overflow);
-                if addr % 2 == 0 { 6 } else { 8 }
-            }
-        },
-        _ => {
-            unreachable!("imm code {code:b}");
-        }
-    }
-}
-
 pub fn group1_b (state: &mut CPU) -> u64 {
     let arg = state.next_u8();
     let code = (arg & B_REG) >> 3;
@@ -1314,100 +1353,6 @@ fn nop (state: &mut CPU) -> u64 {
 #[inline]
 fn unimplemented (state: &mut CPU) -> u64 {
     unimplemented!("opcode {:x}", state.opcode())
-}
-
-#[inline]
-fn group3_instruction (state: &mut CPU) -> u64 {
-    let opcode = state.next_u8();
-    group3::execute_instruction(state, opcode)
-}
-
-mod group3 {
-    use mpcemu_core::define_instruction_set;
-    use super::CPU;
-
-    define_instruction_set! {
-        [0x10, "", "", unimplemented],
-        [0x11, "", "", unimplemented],
-        [0x12, "", "", unimplemented],
-        [0x13, "", "", unimplemented],
-        [0x14, "", "", unimplemented],
-        [0x15, "", "", unimplemented],
-        [0x16, "", "", unimplemented],
-        [0x17, "", "", unimplemented],
-        [0x18, "", "", unimplemented],
-        [0x19, "", "", unimplemented],
-        [0x1A, "", "", unimplemented],
-        [0x1B, "", "", unimplemented],
-        [0x1C, "", "", unimplemented],
-        [0x1D, "", "", unimplemented],
-        [0x1E, "", "", unimplemented],
-        [0x1F, "", "", unimplemented],
-
-        [0x20, "", "", unimplemented],
-        [0x22, "", "", unimplemented],
-        [0x26, "", "", unimplemented],
-        [0x28, "", "", unimplemented],
-        [0x2A, "", "", unimplemented],
-
-        [0x31, "", "", unimplemented],
-        [0x33, "", "", unimplemented],
-        [0x39, "", "", unimplemented],
-        [0x3B, "", "", unimplemented],
-
-        [0xE0, "BRKXA", "Start/break extended addressing mode", brkxa],
-
-        [0xF0, "RETXA", "Exit extended addressing mode", retxa],
-    }
-
-    #[inline]
-    fn unimplemented (state: &mut CPU) -> u64 {
-        unimplemented!()
-    }
-
-    #[inline]
-    // temp1 ← (imm8 × 4 + 1, imm8 × 4);
-    // temp2 ← (imm8 × 4 + 3, imm8 × 4 + 2);
-    // XA ← 1;
-    // PC ← temp1;
-    // PS ← temp2.
-    fn brkxa (state: &mut CPU) -> u64 {
-        let addr = state.next_u8() as usize;
-        //panic!("{addr} {:x?}", &state.memory[addr*4..addr*4+4]);
-        state.pc = u16::from_le_bytes([
-            state.get_byte(addr as usize * 4 + 0),
-            state.get_byte(addr as usize * 4 + 1),
-        ]);
-        state.ps = u16::from_le_bytes([
-            state.get_byte(addr as usize * 4 + 2),
-            state.get_byte(addr as usize * 4 + 3),
-        ]);
-        state.set_xa(true);
-        //println!("\n==========BRKXA {:x} {:x} {:x} {:x}", addr, state.pc, state.ps, state.program_address());
-        // TODO: set XA (internal I/O address: FF80H)
-        12
-    }
-
-    #[inline]
-    /// temp1 ← (imm8 × 4 + 1, imm8 × 4);
-    /// temp2 ← (imm8 × 4 + 3, imm8 × 4 + 2);
-    /// XA ← 0;
-    /// PC ← temp1;
-    /// PS ← temp2.
-    fn retxa (state: &mut CPU) -> u64 {
-        let addr = state.next_u8();
-        state.pc = u16::from_le_bytes([
-            state.get_byte(addr as usize * 4 + 0),
-            state.get_byte(addr as usize * 4 + 1),
-        ]);
-        state.ps = u16::from_le_bytes([
-            state.get_byte(addr as usize * 4 + 2),
-            state.get_byte(addr as usize * 4 + 3),
-        ]);
-        state.set_xa(false);
-        // TODO: reset XA
-        12
-    }
 }
 
 #[inline]
