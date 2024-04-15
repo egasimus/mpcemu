@@ -976,7 +976,7 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
             let offset     = cpu.next_u16();
             let [olo, ohi] = offset.to_le_bytes();
             let segment    = cpu.next_u16();
-            let [slo, shi] = offset.to_le_bytes();
+            let [slo, shi] = segment.to_le_bytes();
             (format!("BR"), vec![op, olo, ohi, slo, shi], Box::new(move |cpu: &mut CPU| {
                 cpu.set_pc(offset);
                 cpu.set_ps(segment);
@@ -1231,7 +1231,7 @@ pub fn group1_b (state: &mut CPU) -> u64 {
                 let addr = state.memory_address(mode, mem);
                 let dst  = sign_extend_16(state.read_u8(addr) as u16, 8);
                 println!("\n\naddr={addr:x} dst={dst:b} t={t:b}\n");
-                state.memory_dump((addr / 0x10 - 0x8) * 0x10, 0x10, 0x10);
+                state.dump();
                 if (((t / dst) > 0) && ((t / dst) <= 0x7F)) ||
                    (((t / dst) < 0) && ((t / dst) > (0 - 0x7F - 1)))
                 {

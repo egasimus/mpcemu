@@ -92,7 +92,7 @@ impl CPU {
         let (name, bytes, instruction) = v53_instruction(self, opcode);
         if debug {
             print!("\n\n{:10} {:05X}  {name:15}  {:02X?}",
-                self.clock, self.pc, &bytes);
+                self.clock, self.program_address(), &bytes);
             print!("\n           AW={:04X} BW={:04X} CW={:04X} DW={:04X} PS={:04X} SS={:04X} DS0={:04X} DS1={:04X} IX={:04X} IY={:04X}",
                 self.aw(), self.bw(), self.cw(), self.dw(),
                 self.ps(), self.ss(), self.ds0(), self.ds1(),
@@ -258,7 +258,18 @@ impl CPU {
         }
     }
 
-    pub fn memory_dump (&self, start: u16, per_row: u8, rows: u8) {
+    pub fn dump (&self) {
+        let start = self.ps.saturating_sub(4);
+        let end   = self.ps.saturating_add(4);
+        for row in start..=end {
+            print!("\n{}{:6X}|", if row == self.ps {">"} else {" "}, row);
+            for col in 0..0x10 {
+                print!(" {:02x}", self.memory[row as usize * 0x10 + col]);
+            }
+        }
+    }
+
+    pub fn dump_at (&self, start: u16, per_row: u8, rows: u8) {
         for i in 0..rows {
             let offset = start + i as u16 * per_row as u16;
             print!("\n{:6X}|", offset);
