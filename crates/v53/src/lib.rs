@@ -6,7 +6,7 @@ mod flag;
 mod inst;
 #[cfg(test)] mod test;
 
-pub(crate) use self::{bit::*, reg::*, flag::*};
+pub(crate) use self::{bit::*, reg::*, flag::*, inst::*};
 
 pub struct CPU {
     memory:   [u8;0x100000],
@@ -86,10 +86,21 @@ impl CPU {
     }
 
     /// Read and execute the next instruction in the program
-    pub fn step (&mut self) {
+    pub fn step (&mut self, debug: bool) {
         let opcode = self.next_u8();
         self.opcode = opcode;
-        let (name, bytes, instruction) = self.instruction(opcode);
+        let (name, bytes, instruction) = v53_instruction(self, opcode);
+        if debug {
+            print!("\n\n{:10} {:05X}  {opcode:02X}  {name:10}  {name}", self.clock, self.pc);
+            print!("\n           AW={:04X} BW={:04X} CW={:04X} DW={:04X} PS={:04X} SS={:04X} DS0={:04X} DS1={:04X} IX={:04X} IY={:04X}",
+                self.aw(), self.bw(), self.cw(), self.dw(),
+                self.ps(), self.ss(), self.ds0(), self.ds1(),
+                self.ix(), self.iy());
+            print!("\n           V={} DIR={} IE={} BRK={} S={} Z={} AC={} P={} CY={}",
+                self.v() as u8, self.dir() as u8, self.ie() as u8, self.brk() as u8,
+                self.s() as u8, self.z() as u8, self.ac() as u8, self.p() as u8,
+                self.cy() as u8);
+        }
         self.clock += instruction(self);
         // Reset segment override, except if it was just set:
         if !((opcode == 0x26) || (opcode == 0x2E) || (opcode == 0x36) || (opcode == 0x3E)) {
