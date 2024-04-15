@@ -565,7 +565,7 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                 (0b000, 0b11) => {
                     let src = cpu.next_u16() as i16;
                     let [lo, hi] = src.to_le_bytes();
-                    (format!("ADDW"), vec![op, arg, lo, hi], Box::new(move |cpu: &mut CPU|{
+                    (format!("ADDW {}, {src:04X}", register_name_u16(mem)), vec![op, arg, lo, hi], Box::new(move |cpu: &mut CPU|{
                         let dst = cpu.register_value_u16(mem) as i16;
                         let (result, unsigned_overflow) = (dst as u16).overflowing_add(src as u16);
                         let (_, signed_overflow) = dst.overflowing_add(src);
@@ -577,9 +577,17 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                     }))
                 },
                 (0b000, _)    => {
+                    // FIXME: reads 1 byte too many
+                    //let [src, bytes] = match mode {
+                        //0b00 => {},
+                        //0b01 => {},
+                        //0b10 => {},
+                        //_ => unreachable!()
+                    //};
+
                     let src = cpu.next_u16() as i16;
                     let [lo, hi] = src.to_le_bytes();
-                    (format!("ADDW"), vec![op, arg, lo, hi], Box::new(move |cpu: &mut CPU|{
+                    (format!("ADDW {}, mem", register_name_u16(mem)), vec![op, arg, lo, hi], Box::new(move |cpu: &mut CPU|{
                         let addr = cpu.memory_address(mode, mem);
                         let dst = cpu.read_u16(addr);
                         let (result, unsigned_overflow) = (dst as u16).overflowing_add(src as u16);
@@ -609,11 +617,11 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                 (0b110, _) => (format!("XORW"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
                     unimplemented!()
                 })),
-                // FIXME: fetch 1 more byte
+                // FIXME: reads 1 byte too many
                 (0b111, 0b11) => {
                     let src = cpu.next_u16() as i16;
                     let [lo, hi] = src.to_le_bytes();
-                    (format!("CMPW"), vec![op, arg, lo, hi], Box::new(move |cpu: &mut CPU|{
+                    (format!("CMPW {}, {src:04X}", register_name_u16(mem)), vec![op, arg, lo, hi], Box::new(move |cpu: &mut CPU|{
                         let dst = cpu.register_value_u16(mem) as i16;
                         let (result, unsigned_overflow) = (dst as u16).overflowing_sub(src as u16);
                         let (_, signed_overflow) = dst.overflowing_sub(src);
@@ -623,11 +631,11 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                         2
                     }))
                 },
-                // FIXME: fetch 1 more byte
+                // FIXME: reads 1 byte too many
                 (0b111, _) => {
                     let src = cpu.next_u16() as i16;
                     let [lo, hi] = src.to_le_bytes();
-                    (format!("CMPW"), vec![op, arg, lo, hi], Box::new(move |cpu: &mut CPU|{
+                    (format!("CMPW {}, mem", register_name_u16(mem)), vec![op, arg, lo, hi], Box::new(move |cpu: &mut CPU|{
                         let addr = cpu.memory_address(mode, mem);
                         let dst = cpu.read_u16(addr);
                         let (result, unsigned_overflow) = (dst as u16).overflowing_sub(src as u16);
@@ -1101,37 +1109,57 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
         0xF1 => unimplemented!("UNDEFINED"),
         0xF2 => unimplemented!("REPNE"),
 
-        0xF3 => (format!("REP"), vec![op], Box::new(move |cpu: &mut CPU|{
-            if cpu.cw() == 0 {
-                cpu.set_pc(cpu.pc() + 1);
-            } else {
-                let op = cpu.peek_u8();
-                if (op == 0xA4) || (op == 0xA5) ||        // MOVBK
-                   (op == 0xAC) || (op == 0xAD) ||        // LDM
-                   (op == 0xAA) || (op == 0xAB) ||        // STM
-                   (op == 0x6E) || (op == 0x6F) ||        // OUTM
-                   (op == 0x6C) || (op == 0x6D)           // INM
-                {
-                    // repeat while cw != 0
-                    cpu.opcode = op;
-                    while cpu.cw() != 0 {
-                        let (_, _, instruction) = v53_instruction(cpu, op);
-                        let ticks = instruction(cpu);
-                        cpu.clock += ticks;
-                        cpu.set_cw(cpu.cw() - 1);
-                    }
-                } else if (op == 0xA6) || (op == 0xA7) || // CMPBK
-                    (op == 0xAE) || (op == 0xAF)          // CMPM
-                {
-                    cpu.opcode = op;
-                    unimplemented!("REPZ/REPE {:x}", op);
-                    // repeat while cw != 0 && z == 0
+        0xF3 => {
+            let arg = cpu.next_u8();
+            let name = match arg {
+                0xA4 => "MOVBK",
+                0xA5 => "MOVBKW",
+                0xAC => "LDM",
+                0xAD => "LDMW",
+                0xAA => "STM",
+                0xAB => "STMW",
+                0x6E => "OUTM",
+                0x6F => "OUTMW",
+                0x6C => "INM",
+                0x6D => "INMW",
+                0xA6 => "CMPBK",
+                0xA7 => "CMPBKW",
+                0xAE => "CMPM",
+                0xAF => "CMPMW",
+                _ => panic!("invalid instruction after REP")
+            };
+            (format!("REP {name}"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
+                if cpu.cw() == 0 {
+                    cpu.set_pc(cpu.pc() + 1);
                 } else {
-                    panic!("invalid instruction after REP")
+                    let op = arg;
+                    if (op == 0xA4) || (op == 0xA5) ||        // MOVBK
+                       (op == 0xAC) || (op == 0xAD) ||        // LDM
+                       (op == 0xAA) || (op == 0xAB) ||        // STM
+                       (op == 0x6E) || (op == 0x6F) ||        // OUTM
+                       (op == 0x6C) || (op == 0x6D)           // INM
+                    {
+                        // repeat while cw != 0
+                        cpu.opcode = op;
+                        while cpu.cw() != 0 {
+                            let (_, _, instruction) = v53_instruction(cpu, op);
+                            let ticks = instruction(cpu);
+                            cpu.clock += ticks;
+                            cpu.set_cw(cpu.cw() - 1);
+                        }
+                    } else if (op == 0xA6) || (op == 0xA7) || // CMPBK
+                        (op == 0xAE) || (op == 0xAF)          // CMPM
+                    {
+                        cpu.opcode = op;
+                        unimplemented!("REPZ/REPE {:x}", op);
+                        // repeat while cw != 0 && z == 0
+                    } else {
+                        panic!("invalid instruction after REP")
+                    }
                 }
-            }
-            2
-        })),
+                2
+            }))
+        },
 
         0xF4 => unimplemented!("HALT"),
         0xF5 => unimplemented!("NOT1"),

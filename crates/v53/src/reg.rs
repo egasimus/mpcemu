@@ -247,3 +247,31 @@ define_special_register!(
     /// The PSW (program status word) register contains flags.
     psw set_psw  mov_psw_i   inc_psw dec_psw push_psw pop_psw
 );
+
+pub fn register_name_u8 (reg: u8) -> &'static str {
+    match reg {
+        0b000 => "AL",
+        0b001 => "CL",
+        0b010 => "DL",
+        0b011 => "BL",
+        0b100 => "AH",
+        0b101 => "CH",
+        0b110 => "DH",
+        0b111 => "BH",
+        _ => unreachable!()
+    }
+}
+
+pub fn register_name_u16 (reg: u8) -> &'static str {
+    match reg {
+        0b000 => "AW",
+        0b001 => "CW",
+        0b010 => "DW",
+        0b011 => "BW",
+        0b100 => "SP",
+        0b101 => "BP",
+        0b110 => "IX",
+        0b111 => "IY",
+        _ => unreachable!()
+    }
+}
