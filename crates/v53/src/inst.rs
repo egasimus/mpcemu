@@ -139,12 +139,12 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
         0x16 => (format!("PUSH SS"), vec![op], Box::new(push_ss)),
         0x17 => (format!("POP SS"),  vec![op], Box::new(pop_ss)),
 
-        0x18 => unimplemented!("SUBC"),
-        0x19 => unimplemented!("SUBC"),
-        0x1A => unimplemented!("SUBC"),
-        0x1B => unimplemented!("SUBC"),
-        0x1C => unimplemented!("SUBC"),
-        0x1D => unimplemented!("SUBC"),
+        0x18 => unimplemented!("SUBC mem, reg"),
+        0x19 => unimplemented!("SUBCW mem, reg"),
+        0x1A => unimplemented!("SUBC reg, mem"),
+        0x1B => unimplemented!("SUBCW reg, mem"),
+        0x1C => unimplemented!("SUBC acc, imm"),
+        0x1D => unimplemented!("SUBCW acc, imm"),
 
         0x1E => (format!("PUSH DS0"), vec![op], Box::new(push_ds0)),
         0x1F => (format!("POP DS0"),  vec![op], Box::new(pop_ds0)),
@@ -533,7 +533,7 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
             }))
         },
 
-        0x80 => {
+        0x80 => { // TODO: ensure no sign extension
             let [arg, mode, code, mem] = get_mode_code_mem(cpu);
             match (code, mode) {
                 (0b000, _) => unimplemented!("ADD"),
@@ -557,10 +557,21 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
             }
         },
 
-        0x81 => {
+        0x81 => { // TODO: ensure no sign extension
             let [arg, mode, code, mem] = get_mode_code_mem(cpu);
             match (code, mode) {
-                (0b000, _) => unimplemented!("ADDW"),
+                (0b000, 0b11) => {
+                    let src = cpu.next_u8() as i16;
+                    let [lo, hi] = src.to_le_bytes();
+                    (format!("ADDW {}, {src:04X}", register_name_u16(mem)), vec![op, arg, lo, hi], Box::new(move |cpu: &mut CPU|{
+                        let dst = cpu.register_value_u16(mem) as i16;
+                        let (result, carry) = (dst as u16).overflowing_add(src as u16);
+                        let (_, overflow) = dst.overflowing_add(src);
+                        cpu.set_register_u16(mem, result);
+                        cpu.set_pzscyv(result, carry, overflow);
+                        2
+                    }))
+                },
                 (0b001, _) => unimplemented!("ORW"),
                 (0b010, _) => unimplemented!("ADDCW"),
                 (0b011, _) => unimplemented!("SUBW"),
@@ -572,7 +583,7 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
             }
         },
 
-        0x82 => {
+        0x82 => { // TODO: ensure sign extension
             let [arg, mode, code, mem] = get_mode_code_mem(cpu);
             match (code, mode) {
                 (0b000, _) => unimplemented!("ADD"),
@@ -587,7 +598,7 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
             }
         },
 
-        0x83 => {
+        0x83 => { // TODO: ensure sign extension
             let [arg, mode, code, mem] = get_mode_code_mem(cpu);
             match (code, mode) {
                 (0b000, 0b11) => {
@@ -999,7 +1010,13 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                         unimplemented!("rorc");
                     },
                     0b100 => {
-                        unimplemented!("shl");
+                        let msb       = source & W15;
+                        let shifted   = source << 1;
+                        let msb_after = shifted >> 15;
+                        set_source_word(cpu, arg, shifted);
+                        cpu.set_cy(msb > 0);
+                        cpu.set_v(msb != msb_after);
+                        2
                     },
                     0b101 => {
                         let lsb        = source & W0;
@@ -1331,46 +1348,49 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
 
         0xFF => {
             let [arg, mode, code, mem] = get_mode_code_mem(cpu);
-            (format!("GROUP2"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
-                match code {
-                    0b000 => {
-                        unimplemented!("inc");
-                    },
-                    0b001 => {
-                        unimplemented!("dec");
-                    },
-                    0b010 => {
-                        unimplemented!("call regptr16/memptr16");
-                    },
-                    0b011 => {
-                        let addr = cpu.memory_address(mode, mem) as i32;
-                        let pc = cpu.read_u16(addr as u16 + 0);
-                        let ps = cpu.read_u16(addr as u16 + 2);
-                        cpu.set_sp(cpu.sp() - 2);
-                        cpu.write_u16(cpu.sp(), cpu.ps());
-                        cpu.set_ps(ps);
-                        cpu.set_sp(cpu.sp() - 2);
-                        cpu.write_u16(cpu.sp(), cpu.pc());
-                        cpu.set_pc(pc);
-                        if addr % 2 == 0 { 15 } else { 23 }
-                    },
-                    0b100 => {
-                        unimplemented!("br");
-                    },
-                    0b101 => {
-                        unimplemented!("br");
-                    },
-                    0b110 => {
-                        unimplemented!("push");
-                    },
-                    0b111 => {
-                        panic!("undefined instruction 0b111")
-                    },
-                    _ => {
-                        unreachable!("imm code {code:b}");
-                    }
+            match code {
+                0b000 => {
+                    unimplemented!("inc");
+                },
+                0b001 => {
+                    unimplemented!("dec");
+                },
+                0b010 => (format!("CALL16 {arg}"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
+                    let addr = cpu.memory_address(mode, mem) as i32;
+                    let pc = cpu.read_u16(addr as u16 + 0);
+                    cpu.set_sp(cpu.sp() - 2);
+                    cpu.write_u16(cpu.sp(), cpu.pc());
+                    cpu.set_pc(pc);
+                    if addr % 2 == 0 { 15 } else { 23 }
+                })),
+                0b011 => (format!("CALL32 {arg}"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
+                    let addr = cpu.memory_address(mode, mem) as i32;
+                    let pc = cpu.read_u16(addr as u16 + 0);
+                    let ps = cpu.read_u16(addr as u16 + 2);
+                    cpu.set_sp(cpu.sp() - 2);
+                    cpu.write_u16(cpu.sp(), cpu.ps());
+                    cpu.set_ps(ps);
+                    cpu.set_sp(cpu.sp() - 2);
+                    cpu.write_u16(cpu.sp(), cpu.pc());
+                    cpu.set_pc(pc);
+                    if addr % 2 == 0 { 15 } else { 23 }
+                })),
+                0b100 => {
+                    unimplemented!("br");
+                },
+                0b101 => {
+                    unimplemented!("br");
+                },
+                0b110 => {
+                    unimplemented!("push");
+                },
+                0b111 => {
+                    panic!("undefined instruction 0b111")
+                },
+                _ => {
+                    unreachable!("imm code {code:b}");
                 }
-            }))
+            }
         },
     }
 }
