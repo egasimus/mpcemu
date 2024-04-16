@@ -38,7 +38,7 @@ pub struct CPU {
 }
 
 /// Segment override
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub enum Segment {
     /// Use data segment 0
     DS0,
@@ -217,7 +217,7 @@ impl CPU {
     }
 
     #[inline]
-    pub fn memory_address (&mut self, mode: u8, mem: u8) -> u16 {
+    pub fn memory_address (&mut self, mode: u8, mem: u8) -> u32 {
         match mode {
             0b00 => self.memory_address_00(mem),
             0b01 => {
@@ -250,46 +250,46 @@ impl CPU {
     //}
 
     #[inline]
-    pub fn memory_address_00 (&mut self, mem: u8) -> u16 {
+    pub fn memory_address_00 (&mut self, mem: u8) -> u32 {
         match mem {
-            0b000 => self.bw() + self.ix(),
-            0b001 => self.bw() + self.iy(),
-            0b010 => self.bp() + self.ix(),
-            0b011 => self.bp() + self.iy(),
-            0b100 => self.ix(),
-            0b101 => self.iy(),
-            0b110 => self.next_u16(),
-            0b111 => self.bw(),
+            0b000 => self.bw() as u32 + self.ix() as u32,
+            0b001 => self.bw() as u32 + self.iy() as u32,
+            0b010 => self.bp() as u32 + self.ix() as u32,
+            0b011 => self.bp() as u32 + self.iy() as u32,
+            0b100 => self.ix() as u32,
+            0b101 => self.iy() as u32,
+            0b110 => self.next_u16() as u32,
+            0b111 => self.bw() as u32,
             _ => panic!("invalid memory inner mode {:b}", mem)
         }
     }
 
     #[inline]
-    pub fn memory_address_01 (&self, mem: u8, displace: u8) -> u16 {
+    pub fn memory_address_01 (&self, mem: u8, displace: u8) -> u32 {
         match mem {
-            0b000 => self.bw() + self.ix() + displace as u16,
-            0b001 => self.bw() + self.iy() + displace as u16,
-            0b010 => self.bp() + self.ix() + displace as u16,
-            0b011 => self.bp() + self.iy() + displace as u16,
-            0b100 => self.ix() + displace as u16,
-            0b101 => self.iy() + displace as u16,
-            0b110 => self.bp() + displace as u16,
-            0b111 => self.bw() + displace as u16,
+            0b000 => self.bw() as u32 + self.ix() as u32 + displace as u32,
+            0b001 => self.bw() as u32 + self.iy() as u32 + displace as u32,
+            0b010 => self.bp() as u32 + self.ix() as u32 + displace as u32,
+            0b011 => self.bp() as u32 + self.iy() as u32 + displace as u32,
+            0b100 => self.ix() as u32 + displace as u32,
+            0b101 => self.iy() as u32 + displace as u32,
+            0b110 => self.bp() as u32 + displace as u32,
+            0b111 => self.bw() as u32 + displace as u32,
             _ => panic!("invalid memory inner mode {:b}", mem)
         }
     }
 
     #[inline]
-    pub fn memory_address_10 (&self, mem: u8, displace: u16) -> u16 {
+    pub fn memory_address_10 (&self, mem: u8, displace: u16) -> u32 {
         match mem {
-            0b000 => self.bw() + self.ix() + displace,
-            0b001 => self.bw() + self.iy() + displace,
-            0b010 => self.bp() + self.ix() + displace,
-            0b011 => self.bp() + self.iy() + displace,
-            0b100 => self.ix() + displace,
-            0b101 => self.iy() + displace,
-            0b110 => self.bp() + displace,
-            0b111 => self.bw() + displace,
+            0b000 => self.bw() as u32 + self.ix() as u32 + displace as u32,
+            0b001 => self.bw() as u32 + self.iy() as u32 + displace as u32,
+            0b010 => self.bp() as u32 + self.ix() as u32 + displace as u32,
+            0b011 => self.bp() as u32 + self.iy() as u32 + displace as u32,
+            0b100 => self.ix() as u32 + displace as u32,
+            0b101 => self.iy() as u32 + displace as u32,
+            0b110 => self.bp() as u32 + displace as u32,
+            0b111 => self.bw() as u32 + displace as u32,
             _ => panic!("invalid memory inner mode {:b}", mem)
         }
     }
@@ -357,37 +357,42 @@ impl CPU {
         self.ports[0xff80] = if value { 1 } else { 0 };
     }
 
-    pub fn get_byte (&self, addr: usize) -> u8 {
+    pub fn get_byte (&self, addr: u32) -> u8 {
         if addr < 0xA0000 {
             if self.xa() {
-                self.extended[addr]
+                self.extended[addr as usize]
             } else {
-                self.memory[addr]
+                self.memory[addr as usize]
             }
         } else {
-            self.memory[addr]
+            self.memory[addr as usize]
         }
     }
 
-    pub fn set_byte (&mut self, addr: usize, value: u8) {
+    pub fn set_byte (&mut self, addr: u32, value: u8) {
         if addr < 0xA0000 {
             if self.xa() {
-                self.extended[addr] = value
+                self.extended[addr as usize] = value
             } else {
-                self.memory[addr] = value
+                self.memory[addr as usize] = value
             }
         } else {
-            self.memory[addr] = value
+            self.memory[addr as usize] = value
         }
     }
 
     /// Program address
-    pub fn program_address (&self) -> usize {
-        (((self.ps as u32) * 0x10) + self.pc as u32) as usize
+    pub fn program_address (&self) -> u32 {
+        ((self.ps as u32) * 0x10) + self.pc as u32
+    }
+
+    /// Stack address
+    pub fn stack_address (&self) -> u32 {
+        ((self.ss as u32) * 0x10) + self.sp as u32
     }
 
     /// Effective address
-    pub fn effective_address (&self, addr: u16) -> usize {
+    pub fn effective_address (&self, addr: u32) -> u32 {
         let segment = match self.segment {
             None               => self.ds0,
             Some(Segment::DS0) => self.ds0,
@@ -395,13 +400,12 @@ impl CPU {
             Some(Segment::PS)  => self.ps,
             Some(Segment::SS)  => self.ss
         } as u32 * 0x10;
-
-        (segment + addr as u32) as usize
+        segment + addr as u32
     }
 
     /// Target address (always offset from DS1)
-    pub fn ds1_address (&self, addr: u16) -> usize {
-        ((self.ds1 as u32 * 0x10) + addr as u32) as usize
+    pub fn ds1_address (&self, addr: u32) -> u32 {
+        (self.ds1 as u32 * 0x10) + addr as u32
     }
 
     pub fn peek_u8 (&mut self) -> u8 {
@@ -437,25 +441,25 @@ impl CPU {
     }
 
     /// Read byte from effective address
-    pub fn read_u8 (&mut self, addr: u16) -> u8 {
+    pub fn read_u8 (&mut self, addr: u32) -> u8 {
         self.get_byte(self.effective_address(addr))
     }
 
     /// Read word from effective address
-    pub fn read_u16 (&mut self, addr: u16) -> u16 {
+    pub fn read_u16 (&mut self, addr: u32) -> u16 {
         let lo = self.read_u8(addr);
         let hi = self.read_u8(addr + 1);
         u16::from_le_bytes([lo, hi])
     }
 
     /// Write byte to effective address
-    pub fn write_u8 (&mut self, addr: u16, value: u8) {
+    pub fn write_u8 (&mut self, addr: u32, value: u8) {
         let ea = self.effective_address(addr);
         self.set_byte(ea, value);
     }
 
     /// Write word to effective address
-    pub fn write_u16 (&mut self, addr: u16, value: u16) {
+    pub fn write_u16 (&mut self, addr: u32, value: u16) {
         let ea = self.effective_address(addr);
         let [lo, hi] = value.to_le_bytes();
         self.set_byte(ea + 0, lo);
@@ -463,55 +467,43 @@ impl CPU {
     }
 
     /// Read byte from input port
-    pub fn input_u8 (&self, addr: u16) -> u8 {
+    pub fn input_u8 (&self, addr: u32) -> u8 {
         self.ports[addr as usize]
     }
 
     /// Read word from input port
-    pub fn input_u16 (&self, addr: u16) -> u16 {
+    pub fn input_u16 (&self, addr: u32) -> u16 {
         let lo = self.input_u8(addr) as u16;
         let hi = self.input_u8(addr + 1) as u16;
         hi << 8 | lo
     }
 
     /// Write byte to input port
-    pub fn output_u8 (&mut self, addr: u16, data: u8) {
+    pub fn output_u8 (&mut self, addr: u32, data: u8) {
         self.ports[addr as usize] = data;
     }
 
     /// Write byte to output port
-    pub fn output_u16 (&mut self, addr: u16, data: u16) {
+    pub fn output_u16 (&mut self, addr: u32, data: u16) {
         let [lo, hi] = data.to_le_bytes();
         self.output_u8(addr + 0, lo);
         self.output_u8(addr + 1, hi);
     }
 
-    /// Push a byte to the stack
-    pub fn push_u8 (&mut self, data: u8) {
-        if self.sp < 1 {
-            panic!("stack overflow")
-        }
-        self.sp = self.sp - 1;
-        self.set_byte(self.sp as usize, data);
-    }
-
-    /// Push a word to the stack
     pub fn push_u16 (&mut self, data: u16) {
+        self.set_sp(self.sp() - 2);
+        let sp = self.stack_address() as usize;
         let [lo, hi] = data.to_le_bytes();
-        self.push_u8(lo);
-        self.push_u8(hi);
-    }
-
-    pub fn pop_u8 (&mut self) -> u8 {
-        let data = self.get_byte(self.sp as usize);
-        self.sp = self.sp + 1;
-        data
+        self.memory[sp + 0] = lo;
+        self.memory[sp + 1] = hi;
     }
 
     pub fn pop_u16 (&mut self) -> u16 {
-        let lo = self.pop_u8() as u16;
-        let hi = self.pop_u8() as u16;
-        hi << 8 | lo
+        let sp = self.stack_address() as usize;
+        let lo = self.memory[sp + 0];
+        let hi = self.memory[sp + 1];
+        self.set_sp(self.sp() + 2);
+        u16::from_le_bytes([lo, hi])
     }
 
 }

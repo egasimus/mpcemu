@@ -74,7 +74,11 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
         },
 
         0x06 => (format!("PUSH DS1"), vec![op], Box::new(push_ds1)),
-        0x07 => (format!("POP DS1"), vec![op], Box::new(pop_ds1)),
+        0x07 => (format!("POP DS1"), vec![op], Box::new(move |cpu: &mut CPU| {
+            let value = cpu.pop_u16();
+            cpu.set_ds1(value);
+            if cpu.pc() % 2 == 1 { 7 } else { 5 }
+        })),
 
         0x08 => unimplemented!("Byte bitwise OR to memory from register"),
         0x09 => unimplemented!("Word bitwise OR to memory from register"),
@@ -116,15 +120,15 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
             match arg {
 
                 0xE0 => (format!("BRKXA"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
-                    let addr = cpu.next_u8() as usize;
+                    let addr = cpu.next_u8() as u32;
                     //panic!("{addr} {:x?}", &cpu.memory[addr*4..addr*4+4]);
                     cpu.pc = u16::from_le_bytes([
-                        cpu.get_byte(addr as usize * 4 + 0),
-                        cpu.get_byte(addr as usize * 4 + 1),
+                        cpu.get_byte(addr * 4 + 0),
+                        cpu.get_byte(addr * 4 + 1),
                     ]);
                     cpu.ps = u16::from_le_bytes([
-                        cpu.get_byte(addr as usize * 4 + 2),
-                        cpu.get_byte(addr as usize * 4 + 3),
+                        cpu.get_byte(addr * 4 + 2),
+                        cpu.get_byte(addr * 4 + 3),
                     ]);
                     cpu.set_xa(true);
                     //println!("\n==========BRKXA {:x} {:x} {:x} {:x}", addr, cpu.pc, cpu.ps, cpu.program_address());
@@ -133,14 +137,14 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                 })),
 
                 0xF0 => (format!("RETXA"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
-                    let addr = cpu.next_u8();
+                    let addr = cpu.next_u8() as u32;
                     cpu.pc = u16::from_le_bytes([
-                        cpu.get_byte(addr as usize * 4 + 0),
-                        cpu.get_byte(addr as usize * 4 + 1),
+                        cpu.get_byte(addr * 4 + 0),
+                        cpu.get_byte(addr * 4 + 1),
                     ]);
                     cpu.ps = u16::from_le_bytes([
-                        cpu.get_byte(addr as usize * 4 + 2),
-                        cpu.get_byte(addr as usize * 4 + 3),
+                        cpu.get_byte(addr * 4 + 2),
+                        cpu.get_byte(addr * 4 + 3),
                     ]);
                     cpu.set_xa(false);
                     // TODO: reset XA
@@ -159,16 +163,20 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
         0x15 => unimplemented!("ADDC"),
 
         0x16 => (format!("PUSH SS"), vec![op], Box::new(push_ss)),
-        0x17 => (format!("POP SS"),  vec![op], Box::new(pop_ss)),
+        0x17 => (format!("POP SS"),  vec![op], Box::new(move |cpu: &mut CPU| {
+            let value = cpu.pop_u16();
+            cpu.set_ss(value);
+            if cpu.pc() % 2 == 1 { 7 } else { 5 }
+        })),
 
         0x18 => unimplemented!("SUBC mem, reg"),
         0x19 => {
             let [arg, mode, reg, mem] = get_mode_reg_mem(cpu);
             (format!("SUBW"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
-                let addr   = cpu.memory_address(mode, mem);
-                let dst    = cpu.read_u16(addr);
-                let src    = cpu.register_value_u16(reg);
-                let cy     = cpu.cy() as u16;
+                let addr = cpu.memory_address(mode, mem);
+                let dst  = cpu.read_u16(addr);
+                let src  = cpu.register_value_u16(reg);
+                let cy   = cpu.cy() as u16;
                 let (result, carry) = dst.overflowing_sub(src + cy);
                 let (_, overflow) = (dst as i16).overflowing_sub(src as i16 + cy as i16);
                 cpu.write_u16(addr, result);
@@ -182,7 +190,11 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
         0x1D => unimplemented!("SUBCW acc, imm"),
 
         0x1E => (format!("PUSH DS0"), vec![op], Box::new(push_ds0)),
-        0x1F => (format!("POP DS0"),  vec![op], Box::new(pop_ds0)),
+        0x1F => (format!("POP DS0"),  vec![op], Box::new(move |cpu: &mut CPU| {
+            let value = cpu.pop_u16();
+            cpu.set_ds0(value);
+            if cpu.pc() % 2 == 1 { 7 } else { 5 }
+        })),
 
         0x20 => unimplemented!("AND mem, reg"),
         0x21 => unimplemented!("ANDW mem, reg"),
@@ -466,10 +478,28 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
         0x5A => (format!("PUSH DW"), vec![op], Box::new(push_dw)),
         0x5B => (format!("PUSH BW"), vec![op], Box::new(push_bw)),
 
-        0x5C => (format!("POP SP"), vec![op], Box::new(pop_sp)),
-        0x5D => (format!("POP BP"), vec![op], Box::new(pop_bp)),
-        0x5E => (format!("POP IX"), vec![op], Box::new(pop_ix)),
-        0x5F => (format!("POP IY"), vec![op], Box::new(pop_iy)),
+        0x5C => (format!("POP SP"), vec![op], Box::new(move |cpu: &mut CPU|{
+            // preserve old stack position to determine cycle count
+            let addr = cpu.sp();
+            let value = cpu.pop_u16();
+            cpu.set_sp(value);
+            if addr % 2 == 1 { 7 } else { 5 }
+        })),
+        0x5D => (format!("POP BP"), vec![op], Box::new(move |cpu: &mut CPU|{
+            let value = cpu.pop_u16();
+            cpu.set_bp(value);
+            if cpu.sp() % 2 == 1 { 7 } else { 5 }
+        })),
+        0x5E => (format!("POP IX"), vec![op], Box::new(move |cpu: &mut CPU|{
+            let value = cpu.pop_u16();
+            cpu.set_ix(value);
+            if cpu.sp() % 2 == 1 { 7 } else { 5 }
+        })),
+        0x5F => (format!("POP IY"), vec![op], Box::new(move |cpu: &mut CPU|{
+            let value = cpu.pop_u16();
+            cpu.set_iy(value);
+            if cpu.sp() % 2 == 1 { 7 } else { 5 }
+        })),
 
         0x60 => unimplemented!("PUSH R"),
         0x61 => unimplemented!("POP R"),
@@ -487,8 +517,8 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
         0x6D => unimplemented!("INM"),
 
         0x6E => (format!("OUTM"), vec![op], Box::new(move |cpu: &mut CPU|{
-            let data = cpu.read_u8(cpu.ix);
-            cpu.output_u8(cpu.dw, data);
+            let data = cpu.read_u8(cpu.ix() as u32);
+            cpu.output_u8(cpu.dw() as u32, data);
             if cpu.dir() {
                 cpu.ix = cpu.ix - 1;
             } else {
@@ -499,8 +529,8 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
         })),
 
         0x6F => (format!("OUTMW"), vec![op], Box::new(move |cpu: &mut CPU|{
-            let data = cpu.read_u16(cpu.ix);
-            cpu.output_u16(cpu.dw, data);
+            let data = cpu.read_u16(cpu.ix() as u32);
+            cpu.output_u16(cpu.dw() as u32, data);
             if cpu.dir() {
                 cpu.ix = cpu.ix - 2;
             } else {
@@ -862,8 +892,7 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
             let [arg, mode, reg, mem] = get_mode_reg_mem(cpu);
             (format!("POP"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
                 let addr = cpu.memory_address(mode, mem);
-                let data = cpu.read_u16(cpu.sp());
-                cpu.set_sp(cpu.sp() + 2);
+                let data = cpu.pop_u16();
                 cpu.write_u16(addr, data);
                 if addr % 2 == 1 { 9 } else { 5 }
             }))
@@ -952,7 +981,11 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
 
         0x9C => (format!("PUSH PSW"), vec![op], Box::new(push_psw)),
 
-        0x9D => (format!("POP PSW"), vec![op], Box::new(pop_psw)),
+        0x9D => (format!("POP PSW"), vec![op], Box::new(move |cpu: &mut CPU| {
+            let value = cpu.pop_u16();
+            cpu.set_psw(value);
+            if cpu.pc() % 2 == 1 { 7 } else { 5 }
+        })),
 
         0x9E => (format!("MOV PSW, AH"), vec![op], Box::new(move |cpu: &mut CPU|{
             cpu.set_psw(((cpu.ah() & 0b11010111) | 0b00000010) as u16);
@@ -968,7 +1001,7 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
             let addr = cpu.next_u16();
             let [lo, hi] = addr.to_le_bytes();
             (format!("MOV AL, {addr:04X}"), vec![op, lo, hi], Box::new(move |cpu: &mut CPU|{
-                let value = cpu.read_u8(addr);
+                let value = cpu.read_u8(addr as u32);
                 cpu.set_al(value);
                 5
             }))
@@ -978,7 +1011,7 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
             let addr = cpu.next_u16();
             let [lo, hi] = addr.to_le_bytes();
             (format!("MOV AL, {addr:04X}"), vec![op, lo, hi], Box::new(move |cpu: &mut CPU|{
-                let value = cpu.read_u16(addr);
+                let value = cpu.read_u16(addr as u32);
                 cpu.set_aw(value);
                 if addr % 2 == 1 { 7 } else { 5 }
             }))
@@ -988,7 +1021,7 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
             let addr = cpu.next_u16();
             let [lo, hi] = addr.to_le_bytes();
             (format!("MOV {addr:04X}, AL"), vec![op, lo, hi], Box::new(move |cpu: &mut CPU|{
-                cpu.write_u8(addr, cpu.al());
+                cpu.write_u8(addr as u32, cpu.al());
                 3
             }))
         },
@@ -997,7 +1030,7 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
             let addr = cpu.next_u16();
             let [lo, hi] = addr.to_le_bytes();
             (format!("MOV {addr:04X}, AW"), vec![op, lo, hi], Box::new(move |cpu: &mut CPU|{
-                cpu.write_u16(addr, cpu.aw());
+                cpu.write_u16(addr as u32, cpu.aw());
                 if addr % 2 == 1 { 5 } else { 3 }
             }))
         },
@@ -1006,9 +1039,9 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
 
         0xA5 => (format!("MOVBKW"), vec![op], Box::new(move |cpu: &mut CPU| {
             let dst = cpu.ds1() as u32 * 0x10 + cpu.iy() as u32;
-            let src = cpu.effective_address(cpu.ix());
-            cpu.set_byte(dst as usize + 0, cpu.get_byte(src as usize + 0));
-            cpu.set_byte(dst as usize + 1, cpu.get_byte(src as usize + 1));
+            let src = cpu.effective_address(cpu.ix() as u32);
+            cpu.set_byte(dst + 0, cpu.get_byte(src + 0));
+            cpu.set_byte(dst + 1, cpu.get_byte(src + 1));
             if cpu.dir() {
                 cpu.set_ix(cpu.ix() - 2);
                 cpu.set_iy(cpu.iy() - 2);
@@ -1032,7 +1065,10 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
 
         0xAA => (format!("STM"), vec![op], Box::new(move |cpu: &mut CPU| {
             let iy = cpu.iy();
-            cpu.write_u8(cpu.ds1_address(iy) as u16, cpu.al());
+            let segment = cpu.segment;
+            cpu.segment = Some(Segment::DS1);
+            cpu.write_u8(iy as u32, cpu.al());
+            cpu.segment = segment;
             cpu.set_iy(if cpu.dir() {
                 iy.overflowing_sub(1).0
             } else {
@@ -1043,7 +1079,10 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
 
         0xAB => (format!("STMW"), vec![op], Box::new(move |cpu: &mut CPU| {
             let iy = cpu.iy();
-            cpu.write_u16(cpu.ds1_address(iy) as u16, cpu.aw());
+            let segment = cpu.segment;
+            cpu.segment = Some(Segment::DS1);
+            cpu.write_u16(iy as u32, cpu.aw());
+            cpu.segment = segment;
             cpu.set_iy(if cpu.dir() {
                 iy.overflowing_sub(2).0
             } else {
@@ -1053,7 +1092,7 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
         })),
 
         0xAC => (format!("LDM"), vec![op], Box::new(move |cpu: &mut CPU| {
-            let data = cpu.read_u8(cpu.ix);
+            let data = cpu.read_u8(cpu.ix() as u32);
             cpu.set_al(data);
             if cpu.dir() {
                 cpu.ix = cpu.ix - 1;
@@ -1064,7 +1103,7 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
         })),
 
         0xAD => (format!("LDMW"), vec![op], Box::new(move |cpu: &mut CPU| {
-            let data = cpu.read_u16(cpu.ix);
+            let data = cpu.read_u16(cpu.ix() as u32);
             cpu.aw = data;
             if cpu.dir() {
                 cpu.ix = cpu.ix - 2;
@@ -1135,12 +1174,10 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
         },
 
         0xC3 => (format!("RET"), vec![op], Box::new(move |cpu: &mut CPU| {
-            let sp = cpu.sp();
-            let pc = cpu.read_u16(sp);
-            let ps = cpu.read_u16(sp + 2);
-            cpu.set_pc(ps);
+            let pc = cpu.pop_u16();
+            cpu.set_pc(pc);
+            let ps = cpu.pop_u16();
             cpu.set_ps(ps);
-            cpu.set_sp(sp + 4);
             if pc % 2 == 1 { 12 } else { 10 }
         })),
 
@@ -1180,8 +1217,8 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
         0xCD => {
             let arg = cpu.next_u8();
             (format!("BRK {arg:02X}"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
-                let ta = cpu.read_u16(arg as u16 * 4);
-                let tc = cpu.read_u16(arg as u16 * 4 + 2);
+                let ta = cpu.read_u16(arg as u32 * 4);
+                let tc = cpu.read_u16(arg as u32 * 4 + 2);
                 cpu.push_u16(cpu.psw());
                 cpu.set_ie(false);
                 cpu.set_brk(false);
@@ -1195,7 +1232,15 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
 
         0xCE => unimplemented!("BRKV"),
 
-        0xCF => unimplemented!("RETI"),
+        0xCF => (format!("RETI"), vec![op], Box::new(move |cpu: &mut CPU|{
+            let pc = cpu.pop_u16();
+            let ps = cpu.pop_u16();
+            let psw = cpu.pop_u16();
+            cpu.set_pc(pc);
+            cpu.set_ps(ps);
+            cpu.set_psw(psw);
+            if cpu.pc() % 2 == 1 { 19 } else { 13 }
+        })),
 
         0xD0 => unimplemented!("SHIFT b"),
 
@@ -1293,7 +1338,7 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
         0xE4 => {
             let addr = cpu.next_u8();
             (format!("IN {addr:04X}"), vec![op, addr], Box::new(move |cpu: &mut CPU| {
-                let data = cpu.input_u8(addr as u16);
+                let data = cpu.input_u8(addr as u32);
                 cpu.set_al(data);
                 5
             }))
@@ -1303,7 +1348,7 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
             let addr = cpu.next_u16();
             let [lo, hi] = addr.to_le_bytes();
             (format!("INW"), vec![op, lo, hi], Box::new(move |cpu: &mut CPU| {
-                let data = cpu.input_u16(addr);
+                let data = cpu.input_u16(addr as u32);
                 cpu.set_aw(data);
                 7
             }))
@@ -1313,7 +1358,7 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
             let addr = cpu.next_u8();
             (format!("OUT"), vec![op, addr], Box::new(move |cpu: &mut CPU| {
                 let data = cpu.al();
-                cpu.output_u8(addr as u16, data);
+                cpu.output_u8(addr as u32, data);
                 3
             }))
         },
@@ -1322,7 +1367,7 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
             let addr = cpu.next_u16();
             let [lo, hi] = addr.to_le_bytes();
             (format!("OUTW"), vec![op, lo, hi], Box::new(move |cpu: &mut CPU| {
-                cpu.output_u16(addr, cpu.aw);
+                cpu.output_u16(addr as u32, cpu.aw);
                 5
             }))
         },
@@ -1369,25 +1414,25 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
 
         0xEC => (format!("IN"), vec![op], Box::new(move |cpu: &mut CPU|{
             let addr = cpu.dw;
-            let data = cpu.input_u8(addr);
+            let data = cpu.input_u8(addr as u32);
             cpu.set_al(data);
             5
         })),
 
         0xED => (format!("INW"), vec![op], Box::new(move |cpu: &mut CPU|{
             let addr = cpu.dw;
-            let data = cpu.input_u16(addr);
+            let data = cpu.input_u16(addr as u32);
             cpu.set_aw(data);
             7
         })),
 
         0xEE => (format!("OUT DW, AL"), vec![op], Box::new(move |cpu: &mut CPU|{
-            cpu.output_u8(cpu.dw, cpu.al());
+            cpu.output_u8(cpu.dw() as u32, cpu.al());
             3
         })),
 
         0xEF => (format!("OUTW DW, AW"), vec![op], Box::new(move |cpu: &mut CPU|{
-            cpu.output_u16(cpu.dw, cpu.aw());
+            cpu.output_u16(cpu.dw() as u32, cpu.aw());
             5
         })),
 
@@ -1577,23 +1622,17 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                     unimplemented!("dec");
                 },
                 0b010 => (format!("CALL16 {arg}"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
-                    let addr = cpu.memory_address(mode, mem) as i32;
-                    let pc = cpu.read_u16(addr as u16 + 0);
-                    cpu.set_sp(cpu.sp() - 2);
-                    cpu.write_u16(cpu.sp(), cpu.pc());
-                    cpu.set_pc(pc);
+                    let addr = cpu.memory_address(mode, mem);
+                    let pc = cpu.read_u16(addr);
+                    cpu.push_u16(cpu.pc());
                     if addr % 2 == 0 { 15 } else { 23 }
                 })),
                 0b011 => (format!("CALL32 {arg}"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
-                    let addr = cpu.memory_address(mode, mem) as i32;
-                    let pc = cpu.read_u16(addr as u16 + 0);
-                    let ps = cpu.read_u16(addr as u16 + 2);
-                    cpu.set_sp(cpu.sp() - 2);
-                    cpu.write_u16(cpu.sp(), cpu.ps());
-                    cpu.set_ps(ps);
-                    cpu.set_sp(cpu.sp() - 2);
-                    cpu.write_u16(cpu.sp(), cpu.pc());
-                    cpu.set_pc(pc);
+                    let addr = cpu.memory_address(mode, mem);
+                    let pc = cpu.read_u16(addr + 0);
+                    let ps = cpu.read_u16(addr + 2);
+                    cpu.push_u16(cpu.ps());
+                    cpu.push_u16(cpu.pc());
                     if addr % 2 == 0 { 15 } else { 23 }
                 })),
                 0b100 => {

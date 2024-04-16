@@ -7,7 +7,7 @@ fn main () -> Result<(), Box<dyn std::error::Error>> {
     memory.extend_from_slice(&bin);
     let mut cpu = mpcemu_v53::CPU::new(memory);
     let mut first: bool = true;
-    let mut last_address: usize = cpu.program_address();
+    let mut last_address: u32 = cpu.program_address();
     println!("\n\nRunning from {:x}:", cpu.program_address());
     loop {
         let address = cpu.program_address();

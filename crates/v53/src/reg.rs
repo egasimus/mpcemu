@@ -83,18 +83,15 @@ macro_rules! define_general_purpose_register {
 
         #[inline]
         pub fn $push (state: &mut CPU) -> u64 {
-            state.set_sp(state.sp() - 2);
-            state.write_u16(state.sp(), state.$w());
+            let data = state.$w();
+            state.push_u16(data);
             if state.sp() % 2 == 0 { 5 } else { 9 }
         }
 
         #[inline]
-        pub fn $pop (state: &mut CPU) -> u16 {
-            unimplemented!();
-            let sp = state.sp();
-            let value = state.read_u16(sp);
-            state.set_sp(sp + 2);
-            value
+        pub fn $pop (state: &mut CPU) {
+            let value = state.pop_u16();
+            state.$w_set(value);
         }
     }
 }
@@ -199,14 +196,15 @@ macro_rules! define_special_register {
 
         #[inline]
         pub fn $push (state: &mut CPU) -> u64 {
-            state.set_sp(state.sp() - 2);
-            state.write_u16(state.sp(), state.$w());
+            let data = state.$w();
+            state.push_u16(data);
             if state.sp() % 2 == 0 { 5 } else { 9 }
         }
 
         #[inline]
-        pub fn $pop (state: &mut CPU) -> u64 {
-            unimplemented!()
+        pub fn $pop (state: &mut CPU) {
+            let value = state.pop_u16();
+            state.$w_set(value);
         }
     }
 }
