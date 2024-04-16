@@ -596,7 +596,7 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
             let [arg, mode, code, mem] = get_mode_code_mem(cpu);
             match (code, mode) {
                 (0b000, 0b11) => {
-                    let src = cpu.next_u8() as i16;
+                    let src = cpu.next_u16() as i16;
                     let [lo, hi] = src.to_le_bytes();
                     (format!("ADDW {}, {src:04X}", register_name_u16(mem)), vec![op, arg, lo, hi], Box::new(move |cpu: &mut CPU|{
                         let dst = cpu.register_value_u16(mem) as i16;
@@ -854,18 +854,36 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
             3
         })),
 
-        0x98 => unimplemented!("CVTBW"),
+        0x98 => (format!("CVTBW"), vec![op], Box::new(move |cpu: &mut CPU|{
+            let msb = cpu.al() & B7;
+            if msb > 0 {
+                cpu.set_ah(0b11111111)
+            } else {
+                cpu.set_ah(0b00000000)
+            }
+            2
+        })),
+
         0x99 => unimplemented!("CVTBL"),
         0x9A => unimplemented!("CALL"),
-        0x9B => unimplemented!("POLL"),
+        0x9B => (format!("POLL"), vec![op], Box::new(move |cpu: &mut CPU|{
+            // TODO: coprocessor
+            2
+        })),
 
         0x9C => (format!("PUSH PSW"), vec![op], Box::new(push_psw)),
 
         0x9D => (format!("POP PSW"), vec![op], Box::new(pop_psw)),
 
-        0x9E => unimplemented!("MOV PSW, AH"),
+        0x9E => (format!("MOV PSW, AH"), vec![op], Box::new(move |cpu: &mut CPU|{
+            cpu.set_psw(((cpu.ah() & 0b11010111) | 0b00000010) as u16);
+            2
+        })),
 
-        0x9F => unimplemented!("MOV AH, PSW"),
+        0x9F => (format!("MOV AH, PSW"), vec![op], Box::new(move |cpu: &mut CPU|{
+            cpu.set_ah(((cpu.psw() & 0b11010111) | 0b00000010) as u8);
+            2
+        })),
 
         0xA0 => {
             let addr = cpu.next_u16();
@@ -1068,9 +1086,10 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
 
         0xCD => {
             let arg = cpu.next_u8();
-            (format!("BRK {arg}"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
+            (format!("BRK {arg:02X}"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
                 let ta = cpu.read_u16(arg as u16 * 4);
                 let tc = cpu.read_u16(arg as u16 * 4 + 2);
+                println!("\n\n======================{tc:04X}:{ta:04X}=============\n");
                 cpu.push_u16(cpu.psw());
                 cpu.set_ie(false);
                 cpu.set_brk(false);
@@ -1179,10 +1198,9 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
         },
 
         0xE4 => {
-            let addr = cpu.next_u16();
-            let [lo, hi] = addr.to_le_bytes();
-            (format!("IN {addr:04X}"), vec![op, lo, hi], Box::new(move |cpu: &mut CPU| {
-                let data = cpu.input_u8(addr);
+            let addr = cpu.next_u8();
+            (format!("IN {addr:04X}"), vec![op, addr], Box::new(move |cpu: &mut CPU| {
+                let data = cpu.input_u8(addr as u16);
                 cpu.set_al(data);
                 5
             }))
@@ -1199,11 +1217,10 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
         },
 
         0xE6 => {
-            let addr = cpu.next_u16();
-            let [lo, hi] = addr.to_le_bytes();
-            (format!("OUT"), vec![op, lo, hi], Box::new(move |cpu: &mut CPU| {
+            let addr = cpu.next_u8();
+            (format!("OUT"), vec![op, addr], Box::new(move |cpu: &mut CPU| {
                 let data = cpu.al();
-                cpu.output_u8(addr, data);
+                cpu.output_u8(addr as u16, data);
                 3
             }))
         },
