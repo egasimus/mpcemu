@@ -951,7 +951,23 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
         0xCA => unimplemented!("RET"),
         0xCB => unimplemented!("RET"),
         0xCC => unimplemented!("BRK"),
-        0xCD => unimplemented!("BRK"),
+
+        0xCD => {
+            let arg = cpu.next_u8();
+            (format!("BRK {arg}"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
+                let ta = cpu.read_u16(arg as u16 * 4);
+                let tc = cpu.read_u16(arg as u16 * 4 + 2);
+                cpu.push_u16(cpu.psw());
+                cpu.set_ie(false);
+                cpu.set_brk(false);
+                cpu.push_u16(cpu.ps());
+                cpu.set_ps(tc);
+                cpu.push_u16(cpu.pc());
+                cpu.set_pc(ta);
+                if cpu.pc() % 2 == 1 { 24 } else { 18 }
+            }))
+        },
+
         0xCE => unimplemented!("BRKV"),
         0xCF => unimplemented!("RETI"),
 
