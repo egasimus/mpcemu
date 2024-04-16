@@ -785,17 +785,75 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
             }))
         },
 
-        0x8F => unimplemented!("POP rm"),
+        0x8F => {
+            let [arg, mode, reg, mem] = get_mode_reg_mem(cpu);
+            (format!("POP"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
+                let addr = cpu.memory_address(mode, mem);
+                let data = cpu.read_u16(cpu.sp());
+                cpu.set_sp(cpu.sp() + 2);
+                cpu.write_u16(addr, data);
+                if addr % 2 == 1 { 9 } else { 5 }
+            }))
+        },
 
         0x90 => (format!("NOP"), vec![op], Box::new(nop)),
 
-        0x91 => unimplemented!("XCH CW"),
-        0x92 => unimplemented!("XCH DW"),
-        0x93 => unimplemented!("XCH BW"),
-        0x94 => unimplemented!("XCH SP"),
-        0x95 => unimplemented!("XCH BP"),
-        0x96 => unimplemented!("XCH IX"),
-        0x97 => unimplemented!("XCH IY"),
+        0x91 => (format!("XCH DW"), vec![op], Box::new(move |cpu: &mut CPU|{
+            let cw = cpu.cw();
+            let aw = cpu.aw();
+            cpu.set_cw(aw);
+            cpu.set_aw(cw);
+            3
+        })),
+
+        0x92 => (format!("XCH DW"), vec![op], Box::new(move |cpu: &mut CPU|{
+            let dw = cpu.dw();
+            let aw = cpu.aw();
+            cpu.set_dw(aw);
+            cpu.set_aw(dw);
+            3
+        })),
+
+        0x93 => (format!("XCH BW"), vec![op], Box::new(move |cpu: &mut CPU|{
+            let bw = cpu.bw();
+            let aw = cpu.aw();
+            cpu.set_bw(aw);
+            cpu.set_aw(bw);
+            3
+        })),
+
+        0x94 => (format!("XCH SP"), vec![op], Box::new(move |cpu: &mut CPU|{
+            let sp = cpu.sp();
+            let aw = cpu.aw();
+            cpu.set_sp(aw);
+            cpu.set_aw(sp);
+            3
+        })),
+
+        0x95 => (format!("XCH BP"), vec![op], Box::new(move |cpu: &mut CPU|{
+            let bp = cpu.bp();
+            let aw = cpu.aw();
+            cpu.set_bp(aw);
+            cpu.set_aw(bp);
+            3
+        })),
+
+        0x96 => (format!("XCH IX"), vec![op], Box::new(move |cpu: &mut CPU|{
+            let ix = cpu.ix();
+            let aw = cpu.aw();
+            cpu.set_ix(aw);
+            cpu.set_aw(ix);
+            3
+        })),
+
+        0x97 => (format!("XCH IY"), vec![op], Box::new(move |cpu: &mut CPU|{
+            let iy = cpu.iy();
+            let aw = cpu.aw();
+            cpu.set_iy(aw);
+            cpu.set_aw(iy);
+            3
+        })),
+
         0x98 => unimplemented!("CVTBW"),
         0x99 => unimplemented!("CVTBL"),
         0x9A => unimplemented!("CALL"),
