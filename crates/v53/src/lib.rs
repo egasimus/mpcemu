@@ -87,22 +87,24 @@ impl CPU {
 
     /// Read and execute the next instruction in the program
     pub fn step (&mut self, debug: bool) {
-        let addr = self.program_address();
+        let addr   = self.program_address();
+        let pc     = self.pc();
         let opcode = self.next_u8();
         self.opcode = opcode;
         let (name, bytes, instruction) = v53_instruction(self, opcode);
         if debug {
-            print!("\n\n{:10} {addr:05X}  {name:15}  {:02X?}",
-                self.clock, &bytes);
             print!("\n           AW   BW   CW   DW   DS0  DS1  BP   IX   IY   SS   SP   PS   PC   ");
             print!("\n           {:04X} {:04X} {:04X} {:04X} {:04X} {:04X} {:04X} {:04X} {:04X} {:04X}:{:04X} {:04X}:{:04X}",
                 self.aw(), self.bw(), self.cw(), self.dw(),
                 self.ds0(), self.ds1(), self.bp(), self.ix(), self.iy(),
-                self.ss(), self.sp(), self.ps(), self.pc());
+                self.ss(), self.sp(), self.ps(), pc);
             print!("\n           V={} DIR={} IE={} BRK={} S={} Z={} AC={} P={} CY={}",
                 self.v() as u8, self.dir() as u8, self.ie() as u8, self.brk() as u8,
                 self.s() as u8, self.z() as u8, self.ac() as u8, self.p() as u8,
                 self.cy() as u8);
+            self.dump_stack(4);
+            print!("\n\n{:10} {addr:05X}  {name:15}  {:02X?}\n",
+                self.clock, &bytes);
         }
         self.clock += instruction(self);
         // Reset segment override, except if it was just set:
@@ -303,9 +305,23 @@ impl CPU {
         }
     }
 
-    pub fn dump_at (&self, start: u16, per_row: u8, rows: u8) {
+    pub fn dump_stack (&self, rows: usize) {
+        self.dump_segment(self.ss(), self.sp(), 4)
+    }
+
+    pub fn dump_segment (&self, segment: u16, offset: u16, count: u16) {
+        for row in 0..count {
+            let start = (((segment as usize * 0x10) + offset as usize) / 0x10 + row as usize) * 0x10;
+            print!("\n{:6X}|", start);
+            for col in 0..0x10 {
+                print!(" {:02x}", self.memory()[start + col]);
+            }
+        }
+    }
+
+    pub fn dump_at (&self, start: usize, per_row: u8, rows: u8) {
         for i in 0..rows {
-            let offset = start + i as u16 * per_row as u16;
+            let offset = start + i as usize * per_row as usize;
             print!("\n{:6X}|", offset);
             for j in 0..per_row {
                 print!(" {:02x}", self.memory()[offset as usize + j as usize]);
