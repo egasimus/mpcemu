@@ -288,7 +288,9 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                     })
                 )
             } else {
-                (format!("XOR {}, mem", register_name_u8(reg)), vec![op, arg],
+                (
+                    format!("XOR {}, mem", register_name_u8(reg)),
+                    vec![op, arg],
                     Box::new(move |cpu: &mut CPU|{
                         let addr = cpu.memory_address(mode, mem);
                         let src  = cpu.read_u8(addr);
@@ -297,7 +299,8 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                         cpu.set_register_u8(reg, result);
                         cpu.set_pzs(result as u16);
                         if addr % 2 == 0 { 6 } else { 8 }
-                    }))
+                    })
+                )
             }
         },
 
@@ -319,7 +322,9 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                     })
                 )
             } else {
-                (format!("XOR {}, mem", register_name_u16(reg)), vec![op, arg],
+                (
+                    format!("XOR {}, mem", register_name_u16(reg)),
+                    vec![op, arg],
                     Box::new(move |cpu: &mut CPU|{
                         let addr = cpu.memory_address(mode, mem);
                         let src  = cpu.read_u16(addr);
@@ -328,7 +333,8 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                         *dst = result;
                         cpu.set_pzs(result);
                         if addr % 2 == 0 { 6 } else { 8 }
-                    }))
+                    })
+                )
             }
         },
 
@@ -863,7 +869,13 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
             }))
         },
 
-        0x90 => (format!("NOP"), vec![op], Box::new(nop)),
+        0x90 => (format!("NOP"), vec![op], Box::new(move |cpu: &mut CPU|{
+            let cw = cpu.cw();
+            let aw = cpu.aw();
+            cpu.set_cw(aw);
+            cpu.set_aw(cw);
+            1
+        })),
 
         0x91 => (format!("XCH DW"), vec![op], Box::new(move |cpu: &mut CPU|{
             let cw = cpu.cw();
@@ -1601,77 +1613,5 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                 }
             }
         },
-    }
-}
-
-#[inline]
-pub fn get_mode_reg_mem (cpu: &mut CPU) -> [u8;4] {
-    let arg  = cpu.next_u8();
-    let mode = (arg & B_MODE) >> 6;
-    let reg  = (arg & B_REG)  >> 3;
-    let mem  = (arg & B_MEM)  >> 0;
-    [arg, mode, reg, mem]
-}
-
-#[inline]
-pub fn get_mode_sreg_mem (cpu: &mut CPU) -> [u8;4] {
-    let arg  = cpu.next_u8();
-    let mode = (arg & B_MODE) >> 6;
-    let sreg = (arg & B_SREG) >> 3;
-    let mem  = (arg & B_MEM)  >> 0;
-    [arg, mode, sreg, mem]
-}
-
-#[inline]
-pub fn get_mode_code_mem (cpu: &mut CPU) -> [u8;4] {
-    let arg  = cpu.next_u8();
-    let mode = (arg & B_MODE) >> 6;
-    let code = (arg & B_REG)  >> 3;
-    let mem  = (arg & B_MEM)  >> 0;
-    [arg, mode, code, mem]
-}
-
-#[inline]
-pub fn sign_extend_16 (data: u16, size: u16) -> i16 {
-    assert!(size > 0 && size <= 16);
-    ((data << (16 - size)) as i16) >> (16 - size)
-}
-
-#[inline]
-pub fn sign_extend_32 (data: u32, size: u32) -> i32 {
-    assert!(size > 0 && size <= 32);
-    ((data << (32 - size)) as i32) >> (32 - size)
-}
-
-#[inline]
-fn nop (_: &mut CPU) -> u64 {
-    1
-}
-
-#[inline]
-pub fn get_source_word (state: &mut CPU, arg: u8) -> u16 {
-    let mode = (arg & B_MODE) >> 6;
-    let mem  = arg & B_MEM;
-    match mode {
-        0b11 => state.register_value_u16(mem),
-        _ => {
-            let addr = state.memory_address(mode, mem);
-            state.read_u16(addr)
-        }
-    }
-}
-
-#[inline]
-pub fn set_source_word (state: &mut CPU, arg: u8, val: u16){
-    let mode = (arg & B_MODE) >> 6;
-    let mem  = arg & B_MEM;
-    match mode {
-        0b11 => {
-            *state.register_reference_u16(mem) = val;
-        },
-        _ => {
-            let addr = state.memory_address(mode, mem);
-            state.write_u16(addr, val);
-        }
     }
 }

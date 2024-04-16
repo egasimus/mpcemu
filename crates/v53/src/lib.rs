@@ -499,3 +499,70 @@ impl CPU {
     }
 
 }
+
+#[inline]
+pub fn get_mode_reg_mem (cpu: &mut CPU) -> [u8;4] {
+    let arg  = cpu.next_u8();
+    let mode = (arg & B_MODE) >> 6;
+    let reg  = (arg & B_REG)  >> 3;
+    let mem  = (arg & B_MEM)  >> 0;
+    [arg, mode, reg, mem]
+}
+
+#[inline]
+pub fn get_mode_sreg_mem (cpu: &mut CPU) -> [u8;4] {
+    let arg  = cpu.next_u8();
+    let mode = (arg & B_MODE) >> 6;
+    let sreg = (arg & B_SREG) >> 3;
+    let mem  = (arg & B_MEM)  >> 0;
+    [arg, mode, sreg, mem]
+}
+
+#[inline]
+pub fn get_mode_code_mem (cpu: &mut CPU) -> [u8;4] {
+    let arg  = cpu.next_u8();
+    let mode = (arg & B_MODE) >> 6;
+    let code = (arg & B_REG)  >> 3;
+    let mem  = (arg & B_MEM)  >> 0;
+    [arg, mode, code, mem]
+}
+
+#[inline]
+pub fn sign_extend_16 (data: u16, size: u16) -> i16 {
+    assert!(size > 0 && size <= 16);
+    ((data << (16 - size)) as i16) >> (16 - size)
+}
+
+#[inline]
+pub fn sign_extend_32 (data: u32, size: u32) -> i32 {
+    assert!(size > 0 && size <= 32);
+    ((data << (32 - size)) as i32) >> (32 - size)
+}
+
+#[inline]
+pub fn get_source_word (state: &mut CPU, arg: u8) -> u16 {
+    let mode = (arg & B_MODE) >> 6;
+    let mem  = arg & B_MEM;
+    match mode {
+        0b11 => state.register_value_u16(mem),
+        _ => {
+            let addr = state.memory_address(mode, mem);
+            state.read_u16(addr)
+        }
+    }
+}
+
+#[inline]
+pub fn set_source_word (state: &mut CPU, arg: u8, val: u16){
+    let mode = (arg & B_MODE) >> 6;
+    let mem  = arg & B_MEM;
+    match mode {
+        0b11 => {
+            *state.register_reference_u16(mem) = val;
+        },
+        _ => {
+            let addr = state.memory_address(mode, mem);
+            state.write_u16(addr, val);
+        }
+    }
+}
