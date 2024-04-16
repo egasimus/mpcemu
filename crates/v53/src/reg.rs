@@ -89,8 +89,12 @@ macro_rules! define_general_purpose_register {
         }
 
         #[inline]
-        pub fn $pop (_state: &mut CPU) -> u64 {
-            unimplemented!()
+        pub fn $pop (state: &mut CPU) -> u16 {
+            unimplemented!();
+            let sp = state.sp();
+            let value = state.read_u16(sp);
+            state.set_sp(sp + 2);
+            value
         }
     }
 }

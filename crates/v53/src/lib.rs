@@ -94,10 +94,11 @@ impl CPU {
         if debug {
             print!("\n\n{:10} {addr:05X}  {name:15}  {:02X?}",
                 self.clock, &bytes);
-            print!("\n           AW={:04X} BW={:04X} CW={:04X} DW={:04X} PS={:04X} SS={:04X} DS0={:04X} DS1={:04X} IX={:04X} IY={:04X}",
+            print!("\n           AW   BW   CW   DW   DS0  DS1  BP   IX   IY   SS   SP   PS   PC   ");
+            print!("\n           {:04X} {:04X} {:04X} {:04X} {:04X} {:04X} {:04X} {:04X} {:04X} {:04X}:{:04X} {:04X}:{:04X}",
                 self.aw(), self.bw(), self.cw(), self.dw(),
-                self.ps(), self.ss(), self.ds0(), self.ds1(),
-                self.ix(), self.iy());
+                self.ds0(), self.ds1(), self.bp(), self.ix(), self.iy(),
+                self.ss(), self.sp(), self.ps(), self.pc());
             print!("\n           V={} DIR={} IE={} BRK={} S={} Z={} AC={} P={} CY={}",
                 self.v() as u8, self.dir() as u8, self.ie() as u8, self.brk() as u8,
                 self.s() as u8, self.z() as u8, self.ac() as u8, self.p() as u8,

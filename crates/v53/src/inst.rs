@@ -184,12 +184,20 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
         0x1E => (format!("PUSH DS0"), vec![op], Box::new(push_ds0)),
         0x1F => (format!("POP DS0"),  vec![op], Box::new(pop_ds0)),
 
-        0x20 => unimplemented!("AND"),
-        0x21 => unimplemented!("AND"),
-        0x22 => unimplemented!("AND"),
-        0x23 => unimplemented!("AND"),
-        0x24 => unimplemented!("AND"),
-        0x25 => unimplemented!("AND"),
+        0x20 => unimplemented!("AND mem, reg"),
+        0x21 => unimplemented!("ANDW mem, reg"),
+        0x22 => unimplemented!("AND reg, mem"),
+        0x23 => unimplemented!("ANDW reg, mem"),
+        0x24 => {
+            let byte = cpu.next_u8();
+            (format!("AND AL, {byte}"), vec![op, byte], Box::new(move |cpu: &mut CPU|{
+                let result = cpu.al() & byte;
+                cpu.set_al(result);
+                cpu.set_pzs(result as u16);
+                2
+            }))
+        },
+        0x25 => unimplemented!("ANDW acc, imm"),
 
         0x26 => (format!("DS1:"), vec![op], Box::new(move |cpu: &mut CPU|{
             cpu.segment = Some(Segment::DS1);
@@ -259,30 +267,69 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
         })),
 
         0x2F => unimplemented!("ADJ4S"),
+
         0x30 => unimplemented!("XOR"),
         0x31 => unimplemented!("XOR"),
-        0x32 => unimplemented!("XOR"),
+        0x32 => {
+            let [arg, mode, reg, mem] = get_mode_reg_mem(cpu);
+            if mode == 0b11 {
+                let reg_dst = reg;
+                let reg_src = mem;
+                (
+                    format!("XOR {}, {}", register_name_u8(reg_dst), register_name_u8(reg_src)),
+                    vec![op, arg],
+                    Box::new(move |cpu: &mut CPU|{
+                        let src = cpu.register_value_u8(mem);
+                        let dst = cpu.register_value_u8(reg);
+                        let result = dst ^ src;
+                        cpu.set_register_u8(reg, result);
+                        cpu.set_pzs(result as u16);
+                        2
+                    })
+                )
+            } else {
+                (format!("XOR {}, mem", register_name_u8(reg)), vec![op, arg],
+                    Box::new(move |cpu: &mut CPU|{
+                        let addr = cpu.memory_address(mode, mem);
+                        let src  = cpu.read_u8(addr);
+                        let dst = cpu.register_value_u8(reg);
+                        let result = dst ^ src;
+                        cpu.set_register_u8(reg, result);
+                        cpu.set_pzs(result as u16);
+                        if addr % 2 == 0 { 6 } else { 8 }
+                    }))
+            }
+        },
 
         0x33 => {
             let [arg, mode, reg, mem] = get_mode_reg_mem(cpu);
-            (format!("XOR"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
-                if mode == 0b11 {
-                    let src = cpu.register_value_u16(mem);
-                    let dst = cpu.register_reference_u16(reg);
-                    let result = *dst ^ src;
-                    *dst = result;
-                    cpu.set_pzs(result);
-                    2
-                } else {
-                    let addr = cpu.memory_address(mode, mem);
-                    let src  = cpu.read_u16(addr);
-                    let dst  = cpu.register_reference_u16(reg);
-                    let result = *dst ^ src;
-                    *dst = result;
-                    cpu.set_pzs(result);
-                    if addr % 2 == 0 { 6 } else { 8 }
-                }
-            }))
+            if mode == 0b11 {
+                let reg_dst = reg;
+                let reg_src = mem;
+                (
+                    format!("XOR {}, {}", register_name_u16(reg_dst), register_name_u16(reg_src)),
+                    vec![op, arg],
+                    Box::new(move |cpu: &mut CPU|{
+                        let src = cpu.register_value_u16(mem);
+                        let dst = cpu.register_reference_u16(reg);
+                        let result = *dst ^ src;
+                        *dst = result;
+                        cpu.set_pzs(result);
+                        2
+                    })
+                )
+            } else {
+                (format!("XOR {}, mem", register_name_u16(reg)), vec![op, arg],
+                    Box::new(move |cpu: &mut CPU|{
+                        let addr = cpu.memory_address(mode, mem);
+                        let src  = cpu.read_u16(addr);
+                        let dst  = cpu.register_reference_u16(reg);
+                        let result = *dst ^ src;
+                        *dst = result;
+                        cpu.set_pzs(result);
+                        if addr % 2 == 0 { 6 } else { 8 }
+                    }))
+            }
         },
 
         0x34 => unimplemented!("XOR"),
@@ -350,13 +397,22 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
             }))
         },
 
-        0x3C => unimplemented!("CMP b, ia"),
+        0x3C => {
+            let byte = cpu.next_u8();
+            (format!("CMP w ia"), vec![op, byte], Box::new(move |cpu: &mut CPU|{
+                let (result, carry) = cpu.al().overflowing_sub(byte);
+                let (_, overflow) = (cpu.al() as i8).overflowing_sub(byte as i8);
+                cpu.set_pzscyv(result as u16, carry, overflow);
+                2
+            }))
+        },
+
         0x3D => {
             let word = cpu.next_u16();
             let [lo, hi] = word.to_le_bytes();
             (format!("CMP w ia"), vec![op, lo, hi], Box::new(move |cpu: &mut CPU|{
-                let (result, carry) = cpu.aw.overflowing_sub(word);
-                let (_, overflow) = (cpu.aw as i16).overflowing_sub(word as i16);
+                let (result, carry) = cpu.aw().overflowing_sub(word);
+                let (_, overflow) = (cpu.aw() as i16).overflowing_sub(word as i16);
                 cpu.set_pzscyv(result, carry, overflow);
                 2
             }))
@@ -399,10 +455,10 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
         0x56 => (format!("PUSH IX"), vec![op], Box::new(push_ix)),
         0x57 => (format!("PUSH IY"), vec![op], Box::new(push_iy)),
 
-        0x58 => (format!("PUSH AW"), vec![op], Box::new(pop_aw)),
-        0x59 => (format!("PUSH CW"), vec![op], Box::new(pop_cw)),
-        0x5A => (format!("PUSH DW"), vec![op], Box::new(pop_dw)),
-        0x5B => (format!("PUSH BW"), vec![op], Box::new(pop_bw)),
+        0x58 => (format!("PUSH AW"), vec![op], Box::new(push_aw)),
+        0x59 => (format!("PUSH CW"), vec![op], Box::new(push_cw)),
+        0x5A => (format!("PUSH DW"), vec![op], Box::new(push_dw)),
+        0x5B => (format!("PUSH BW"), vec![op], Box::new(push_bw)),
 
         0x5C => (format!("POP SP"), vec![op], Box::new(pop_sp)),
         0x5D => (format!("POP BP"), vec![op], Box::new(pop_bp)),
@@ -736,7 +792,18 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
             }))
         },
 
-        0x8A => unimplemented!("MOV"),
+        0x8A => {
+            let [arg, mode, reg, mem] = get_mode_reg_mem(cpu);
+            (format!("MOV reg, mem"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
+                if mode == 0b11 {
+                    let src = cpu.register_value_u8(mem);
+                    cpu.set_register_u8(reg, src);
+                    2
+                } else {
+                    unimplemented!();
+                }
+            }))
+        },
 
         0x8B => {
             let [arg, mode, reg, mem] = get_mode_reg_mem(cpu);
@@ -1048,8 +1115,22 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
 
         0xC0 => unimplemented!("SHIFT"),
         0xC1 => unimplemented!("SHIFT"),
-        0xC2 => unimplemented!("RET"),
-        0xC3 => unimplemented!("REF"),
+
+        0xC2 => {
+            let pop = cpu.next_u16();
+            let [lo, hi] = pop.to_le_bytes();
+            unimplemented!("RET {pop}")
+        },
+
+        0xC3 => (format!("RET"), vec![op], Box::new(move |cpu: &mut CPU| {
+            let sp = cpu.sp();
+            let pc = cpu.read_u16(sp);
+            let ps = cpu.read_u16(sp + 2);
+            cpu.set_pc(ps);
+            cpu.set_ps(ps);
+            cpu.set_sp(sp + 4);
+            if pc % 2 == 1 { 12 } else { 10 }
+        })),
 
         0xC4 => (format!("MOV DS1, AW"), vec![op], Box::new(move |cpu: &mut CPU| {
             cpu.ds1 = cpu.aw;
@@ -1089,7 +1170,6 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
             (format!("BRK {arg:02X}"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
                 let ta = cpu.read_u16(arg as u16 * 4);
                 let tc = cpu.read_u16(arg as u16 * 4 + 2);
-                println!("\n\n======================{tc:04X}:{ta:04X}=============\n");
                 cpu.push_u16(cpu.psw());
                 cpu.set_ie(false);
                 cpu.set_brk(false);
@@ -1102,6 +1182,7 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
         },
 
         0xCE => unimplemented!("BRKV"),
+
         0xCF => unimplemented!("RETI"),
 
         0xD0 => unimplemented!("SHIFT b"),
@@ -1470,7 +1551,15 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
             let [arg, mode, code, mem] = get_mode_code_mem(cpu);
             match code {
                 0b000 => {
-                    unimplemented!("inc");
+                    (format!("INCW mem"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
+                        let addr = cpu.memory_address(mode, mem);
+                        let value = cpu.read_u16(addr);
+                        let (result, carry) = value.overflowing_add(1);
+                        let (_, overflow) = (value as i16).overflowing_add(1);
+                        cpu.write_u16(addr, result);
+                        cpu.set_pzscyv(result as u16, carry, overflow);
+                        if addr % 2 == 1 { 11 } else { 7 }
+                    }))
                 },
                 0b001 => {
                     unimplemented!("dec");
