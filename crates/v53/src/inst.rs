@@ -397,14 +397,44 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
         },
 
         0x39 => unimplemented!("Compare memory with word"),
-        0x3A => unimplemented!("Compare byte with memory"),
+
+        0x3A => {
+            let [arg, mode, reg, mem] = get_mode_reg_mem(cpu);
+            if mode == 0b11 {
+                let reg1 = register_name_u8(reg);
+                let reg2 = register_name_u8(mem);
+                (format!("CMP {reg1}, {reg2}"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
+                    let src = cpu.register_value_u8(mem);
+                    let dst = cpu.register_value_u8(reg);
+                    let (result, carry) = dst.overflowing_sub(src);
+                    let (_, overflow) = (dst as i8).overflowing_sub(src as i8);
+                    cpu.set_pzscyv(result as u16, carry, overflow);
+                    2
+                }))
+            } else {
+                let name = register_name_u8(reg);
+                (format!("CMP mem, {name}"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
+                    let addr = cpu.memory_address(mode, mem);
+                    let src  = cpu.read_u8(addr);
+                    let dst  = cpu.register_value_u8(reg);
+                    let (result, carry) = dst.overflowing_sub(src);
+                    let (_, overflow) = (dst as i8).overflowing_sub(src as i8);
+                    cpu.set_pzscyv(result as u16, carry, overflow);
+                    if addr % 2 == 0 {
+                        6
+                    } else {
+                        8
+                    }
+                }))
+            }
+        },
 
         0x3B => {
             let [arg, mode, reg, mem] = get_mode_reg_mem(cpu);
             if mode == 0b11 {
                 let reg1 = register_name_u16(reg);
                 let reg2 = register_name_u16(mem);
-                (format!("CMP {reg1}, {reg2}"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
+                (format!("CMPW {reg1}, {reg2}"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
                     let src = cpu.register_value_u16(mem);
                     let dst = cpu.register_reference_u16(reg);
                     let (result, carry) = (*dst).overflowing_sub(src);
@@ -414,7 +444,7 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                 }))
             } else {
                 let name = register_name_u16(reg);
-                (format!("CMP mem, {name}"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
+                (format!("CMPW mem, {name}"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
                     let addr = cpu.memory_address(mode, mem);
                     let src  = cpu.read_u16(addr);
                     let dst  = cpu.register_value_u16(reg);
@@ -851,7 +881,16 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
 
         0x87 => unimplemented!("XCH"),
 
-        0x88 => unimplemented!("MOV"),
+        0x88 => {
+            let [arg, mode, reg, mem] = get_mode_reg_mem(cpu);
+            let name = register_name_u8(reg);
+            (format!("MOV mem, {name}"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
+                let addr = cpu.memory_address(mode, mem);
+                let val = cpu.register_value_u8(reg);
+                cpu.write_u8(addr, val);
+                if addr % 2 == 0 { 3 } else { 5 }
+            }))
+        },
 
         0x89 => {
             let [arg, mode, reg, mem] = get_mode_reg_mem(cpu);
@@ -887,7 +926,13 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                     2
                 }))
             } else {
-                unimplemented!();
+                let name = register_name_u16(reg);
+                (format!("MOVW {name}, mem"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
+                    let address = cpu.memory_address(mode, mem);
+                    let value = cpu.read_u16(address);
+                    cpu.set_register_u16(reg, value);
+                    if address % 2 == 1 { 7 } else { 5 }
+                }))
             }
         },
 
@@ -1212,8 +1257,6 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
         0xC3 => (format!("RET"), vec![op], Box::new(move |cpu: &mut CPU| {
             let pc = cpu.pop_u16();
             cpu.set_pc(pc);
-            let ps = cpu.pop_u16();
-            cpu.set_ps(ps);
             if pc % 2 == 1 { 12 } else { 10 }
         })),
 
