@@ -23,16 +23,16 @@ macro_rules! define_general_purpose_register {
                 self.$w = value;
             }
             pub fn $h (&self) -> u8 {
-                (self.$w >> 8) as u8
+                self.$w.to_le_bytes()[1]
             }
             pub fn $h_set (&mut self, value: u8) {
-                self.$w = self.$w | ((value as u16) << 8);
+                self.$w = u16::from_le_bytes([self.$l(), value])
             }
             pub fn $l (&self) -> u8 {
-                (self.$w & 0xff) as u8
+                self.$w.to_le_bytes()[0]
             }
             pub fn $l_set (&mut self, value: u8) {
-                self.$w = self.$w | value as u16;
+                self.$w = u16::from_le_bytes([value, self.$h()])
             }
         }
 

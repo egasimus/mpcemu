@@ -391,28 +391,33 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
 
         0x3B => {
             let [arg, mode, reg, mem] = get_mode_reg_mem(cpu);
-            (format!("CMP"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
-                if mode == 0b11 {
+            if mode == 0b11 {
+                let reg1 = register_name_u16(reg);
+                let reg2 = register_name_u16(mem);
+                (format!("CMP {reg1}, {reg2}"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
                     let src = cpu.register_value_u16(mem);
                     let dst = cpu.register_reference_u16(reg);
                     let (result, carry) = (*dst).overflowing_sub(src);
                     let (_, overflow) = (*dst as i16).overflowing_sub(src as i16);
                     cpu.set_pzscyv(result, carry, overflow);
                     2
-                } else {
+                }))
+            } else {
+                let name = register_name_u16(reg);
+                (format!("CMP mem, {name}"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
                     let addr = cpu.memory_address(mode, mem);
                     let src  = cpu.read_u16(addr);
-                    let dst  = cpu.register_reference_u16(reg);
-                    let (result, carry) = (*dst).overflowing_sub(src);
-                    let (_, overflow) = (*dst as i16).overflowing_sub(src as i16);
+                    let dst  = cpu.register_value_u16(reg);
+                    let (result, carry) = dst.overflowing_sub(src);
+                    let (_, overflow) = (dst as i16).overflowing_sub(src as i16);
                     cpu.set_pzscyv(result, carry, overflow);
                     if addr % 2 == 0 {
                         6
                     } else {
                         8
                     }
-                }
-            }))
+                }))
+            }
         },
 
         0x3C => {
@@ -473,10 +478,26 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
         0x56 => (format!("PUSH IX"), vec![op], Box::new(push_ix)),
         0x57 => (format!("PUSH IY"), vec![op], Box::new(push_iy)),
 
-        0x58 => (format!("PUSH AW"), vec![op], Box::new(push_aw)),
-        0x59 => (format!("PUSH CW"), vec![op], Box::new(push_cw)),
-        0x5A => (format!("PUSH DW"), vec![op], Box::new(push_dw)),
-        0x5B => (format!("PUSH BW"), vec![op], Box::new(push_bw)),
+        0x58 => (format!("POP AW"), vec![op], Box::new(move |cpu: &mut CPU|{
+            let value = cpu.pop_u16();
+            cpu.set_aw(value);
+            if cpu.sp() % 2 == 1 { 7 } else { 5 }
+        })),
+        0x59 => (format!("POP CW"), vec![op], Box::new(move |cpu: &mut CPU|{
+            let value = cpu.pop_u16();
+            cpu.set_cw(value);
+            if cpu.sp() % 2 == 1 { 7 } else { 5 }
+        })),
+        0x5A => (format!("POP DW"), vec![op], Box::new(move |cpu: &mut CPU|{
+            let value = cpu.pop_u16();
+            cpu.set_dw(value);
+            if cpu.sp() % 2 == 1 { 7 } else { 5 }
+        })),
+        0x5B => (format!("POP BW"), vec![op], Box::new(move |cpu: &mut CPU|{
+            let value = cpu.pop_u16();
+            cpu.set_bw(value);
+            if cpu.sp() % 2 == 1 { 7 } else { 5 }
+        })),
 
         0x5C => (format!("POP SP"), vec![op], Box::new(move |cpu: &mut CPU|{
             // preserve old stack position to determine cycle count
@@ -820,7 +841,8 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
 
         0x89 => {
             let [arg, mode, reg, mem] = get_mode_reg_mem(cpu);
-            (format!("MOVW mem, reg"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
+            let name = register_name_u16(reg);
+            (format!("MOVW mem, {name}"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
                 let addr = cpu.memory_address(mode, mem);
                 let val = cpu.register_value_u16(reg);
                 cpu.write_u16(addr, val);
@@ -830,29 +852,29 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
 
         0x8A => {
             let [arg, mode, reg, mem] = get_mode_reg_mem(cpu);
-            (format!("MOV reg, mem"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
-                if mode == 0b11 {
-                    let src = cpu.register_value_u8(mem);
-                    cpu.set_register_u8(reg, src);
+            if mode == 0b11 {
+                let name = register_name_u8(reg);
+                (format!("MOV {name}, mem"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
+                    cpu.set_register_u8(reg, cpu.register_value_u8(mem));
                     2
-                } else {
-                    unimplemented!();
-                }
-            }))
+                }))
+            } else {
+                unimplemented!();
+            }
         },
 
         0x8B => {
             let [arg, mode, reg, mem] = get_mode_reg_mem(cpu);
-            (format!("MOVW reg, mem"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
-                if mode == 0b11 {
-                    let src = cpu.register_value_u16(mem);
-                    let dst = cpu.register_reference_u16(reg);
-                    *dst = src;
+            if mode == 0b11 {
+                let reg1 = register_name_u16(reg);
+                let reg2 = register_name_u16(mem);
+                (format!("MOVW {reg1}, {reg2}"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
+                    cpu.set_register_u16(reg, cpu.register_value_u16(mem));
                     2
-                } else {
-                    unimplemented!();
-                }
-            }))
+                }))
+            } else {
+                unimplemented!();
+            }
         },
 
         0x8C => {
@@ -1602,7 +1624,58 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
         0xFC => (format!("CLR1 DIR"), vec![op], Box::new(clr1_dir)),
         0xFD => (format!("SET1 DIR"), vec![op], Box::new(set1_dir)),
 
-        0xFE => unimplemented!("group2_b"),
+        0xFE => {
+            let [arg, mode, code, mem] = get_mode_code_mem(cpu);
+            match (code, mode) {
+                (0b000, 0b11) => {
+                    let reg_name = register_name_u8(mem);
+                    (format!("INC {reg_name}"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
+                        let value = cpu.register_value_u8(mem);
+                        let (result, carry) = value.overflowing_add(1);
+                        let (_, overflow) = (value as i8).overflowing_add(1);
+                        println!("\n\n==================={value} -> {result} {carry} {overflow}\n\n");
+                        cpu.set_register_u8(mem, result);
+                        cpu.set_pzscyv(result as u16, carry, overflow);
+                        2
+                    }))
+                },
+                (0b000, _) => {
+                    (format!("INC mem"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
+                        let addr = cpu.memory_address(mode, mem);
+                        let value = cpu.read_u8(addr);
+                        let (result, carry) = value.overflowing_add(1);
+                        let (_, overflow) = (value as i8).overflowing_add(1);
+                        cpu.write_u8(addr, result);
+                        cpu.set_pzscyv(result as u16, carry, overflow);
+                        if addr % 2 == 1 { 11 } else { 7 }
+                    }))
+                },
+                (0b001, _) => {
+                    unimplemented!("dec");
+                },
+                (0b010, _) => {
+                    unimplemented!()
+                },
+                (0b011, _) => {
+                    unimplemented!()
+                },
+                (0b100, _) => {
+                    unimplemented!("br");
+                },
+                (0b101, _) => {
+                    unimplemented!("br");
+                },
+                (0b110, _) => {
+                    unimplemented!("push");
+                },
+                (0b111, _) => {
+                    panic!("undefined instruction 0b111")
+                },
+                _ => {
+                    unreachable!("imm code {code:b}");
+                }
+            }
+        },
 
         0xFF => {
             let [arg, mode, code, mem] = get_mode_code_mem(cpu);
@@ -1652,5 +1725,6 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                 }
             }
         },
+
     }
 }
