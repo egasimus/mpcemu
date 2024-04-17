@@ -1577,7 +1577,29 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
         0xF6 => {
             let [arg, mode, code, mem] = get_mode_code_mem(cpu);
             match (code, mode) {
-                (0b000, _) => unimplemented!("test rm"),
+                (0b000, 0b11) => {
+                    let imm = cpu.next_u8();
+                    let name = register_name_u8(mem);
+                    (
+                        format!("TEST {name}, {imm:02X}"),
+                        vec![op, arg, imm],
+                        Box::new(move |cpu: &mut CPU|{
+                            unimplemented!()
+                        })
+                    )
+                },
+                (0b000, _) => {
+                    let disp = cpu.next_u16();
+                    let [lo, hi] = disp.to_le_bytes();
+                    let imm = cpu.next_u8();
+                    (
+                        format!("TEST {mem}, {imm:02X}"),
+                        vec![op, arg, lo, hi, imm],
+                        Box::new(move |cpu: &mut CPU|{
+                            unimplemented!()
+                        })
+                    )
+                },
                 (0b001, _) => panic!("undefined group1 instruction"),
                 (0b010, _) => unimplemented!("not rm"),
                 (0b011, _) => unimplemented!("neg rm"),
@@ -1618,9 +1640,9 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                         cpu.set_ah((t % dst) as u8);
                         cpu.set_al((t / dst) as u8);
                     }
-                    cpu.push_u16(cpu.psw());
-                    cpu.set_ie(false);
-                    cpu.set_brk(false);
+                    //cpu.push_u16(cpu.psw());
+                    //cpu.set_ie(false);
+                    //cpu.set_brk(false);
                     //cpu.push_u16(cpu.ps());
                     //cpu.set_ps(u16::from_le_bytes([0x2, 0x3]));
                     //cpu.push_u16(cpu.pc());
@@ -1639,9 +1661,9 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                         cpu.set_ah((t % dst) as u8);
                         cpu.set_al((t / dst) as u8);
                     }
-                    cpu.push_u16(cpu.psw());
-                    cpu.set_ie(false);
-                    cpu.set_brk(false);
+                    //cpu.push_u16(cpu.psw());
+                    //cpu.set_ie(false);
+                    //cpu.set_brk(false);
                     20
                 })),
                 _ => panic!("invalid group1 instruction {code:b}"),
