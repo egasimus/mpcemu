@@ -14,12 +14,12 @@ impl CPU {
     }
 
     pub fn dump_state (&self, pc: u16) {
-        print!("\n           AW   BW   CW   DW   DS0  DS1  BP   IX   IY   SS   SP   PS   PC   ");
-        print!("\n           {:04X} {:04X} {:04X} {:04X} {:04X} {:04X} {:04X} {:04X} {:04X} {:04X}:{:04X} {:04X}:{:04X}",
+        print!("\n                  AW   BW   CW   DW   DS0  DS1  BP   IX   IY   SS   SP   PS   PC   ");
+        print!("\n                  {:04X} {:04X} {:04X} {:04X} {:04X} {:04X} {:04X} {:04X} {:04X} {:04X}:{:04X} {:04X}:{:04X}",
             self.aw(), self.bw(), self.cw(), self.dw(),
             self.ds0(), self.ds1(), self.bp(), self.ix(), self.iy(),
             self.ss(), self.sp(), self.ps(), pc);
-        print!("\n           PSW={:04X} {} {} {} {} {} {} {} {} {}\n",
+        print!("\n                  PSW={:04X} {} {} {} {} {} {} {} {} {}\n",
             self.psw(),
             if self.v()   { "V  " } else { "   " },
             if self.dir() { "DIR" } else { "   " },
