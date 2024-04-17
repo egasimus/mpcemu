@@ -19,7 +19,8 @@ impl CPU {
             self.aw(), self.bw(), self.cw(), self.dw(),
             self.ds0(), self.ds1(), self.bp(), self.ix(), self.iy(),
             self.ss(), self.sp(), self.ps(), pc);
-        print!("\n           {} {} {} {} {} {} {} {} {}\n",
+        print!("\n           PSW={:04X} {} {} {} {} {} {} {} {} {}\n",
+            self.psw(),
             if self.v()   { "V  " } else { "   " },
             if self.dir() { "DIR" } else { "   " },
             if self.ie()  { "IE " } else { "   " },
@@ -32,8 +33,9 @@ impl CPU {
     }
 
     pub fn dump_instruction (&self, addr: u32, name: &str, bytes: &[u8]) {
-        print!("\n\n{:10} {addr:05X}  {name:15}  {:02X?}\n",
-            self.clock, &bytes);
+        print!("\n\n{:10} {addr:05X}  {name:15}  {:02X?}",
+            self.clock,
+            &bytes);
     }
 
     pub fn dump_stack (&self, rows: usize) {

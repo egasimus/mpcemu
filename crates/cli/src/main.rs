@@ -14,8 +14,8 @@ fn main () -> Result<(), Box<dyn std::error::Error>> {
         cpu.step(first || last_address != address);
         last_address = address;
         first = false;
-        if address == 0xFAD99 {
-            return Ok(())
-        }
+        //if address == 0xFAD79
+            //return Ok(())
+        //}
     }
 }

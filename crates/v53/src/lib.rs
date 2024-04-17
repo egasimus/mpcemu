@@ -95,7 +95,6 @@ impl CPU {
         let (name, bytes, instruction) = v53_instruction(self, opcode);
         if debug {
             self.dump_state(pc);
-            self.dump_stack(4);
             self.dump_instruction(addr, &name, &bytes);
         }
         self.clock += instruction(self);
@@ -448,11 +447,13 @@ impl CPU {
     }
 
     pub fn push_u16 (&mut self, data: u16) {
+        //panic!("push {data}");
         self.set_sp(self.sp() - 2);
         let sp = self.stack_address() as usize;
         let [lo, hi] = data.to_le_bytes();
         self.memory[sp + 0] = lo;
         self.memory[sp + 1] = hi;
+        self.dump_stack(4);
     }
 
     pub fn pop_u16 (&mut self) -> u16 {
@@ -460,6 +461,7 @@ impl CPU {
         let lo = self.memory[sp + 0];
         let hi = self.memory[sp + 1];
         self.set_sp(self.sp() + 2);
+        self.dump_stack(4);
         u16::from_le_bytes([lo, hi])
     }
 

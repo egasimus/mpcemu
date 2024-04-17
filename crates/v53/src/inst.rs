@@ -224,8 +224,10 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
 
         0x2A => {
             let [arg, mode, reg, mem] = get_mode_reg_mem(cpu);
-            (format!("SUB"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
-                if mode == 0b11 {
+            if mode == 0b11 {
+                let reg1 = register_name_u8(reg);
+                let reg2 = register_name_u8(mem);
+                (format!("SUB {reg1}, {reg2}"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
                     let src = cpu.register_value_u8(mem);
                     let dst = cpu.register_value_u8(reg);
                     let (result, carry) = dst.overflowing_sub(src);
@@ -233,7 +235,10 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                     cpu.set_register_u8(reg, result);
                     cpu.set_pzscyv(result as u16, carry, overflow);
                     2
-                } else {
+                }))
+            } else {
+                let name = register_name_u8(reg);
+                (format!("SUB {name}, mem"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
                     let addr = cpu.memory_address(mode, mem);
                     let src  = cpu.read_u8(addr);
                     let dst  = cpu.register_value_u8(reg);
@@ -242,32 +247,37 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                     cpu.set_register_u8(reg, result);
                     cpu.set_pzscyv(result as u16, carry, overflow);
                     if addr % 2 == 0 { 6 } else { 8 }
-                }
-            }))
+                }))
+            }
         },
 
         0x2B => {
             let [arg, mode, reg, mem] = get_mode_reg_mem(cpu);
-            (format!("SUB"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
-                if mode == 0b11 {
-                    let src = cpu.register_value_u8(mem);
-                    let dst = cpu.register_value_u8(reg);
+            if mode == 0b11 {
+                let reg1 = register_name_u16(reg);
+                let reg2 = register_name_u16(mem);
+                (format!("SUB {reg1}, {reg2}"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
+                    let src = cpu.register_value_u16(mem);
+                    let dst = cpu.register_value_u16(reg);
                     let (result, carry) = dst.overflowing_sub(src);
                     let (_, overflow) = (dst as i16).overflowing_sub(src as i16);
-                    cpu.set_register_u8(reg, result);
+                    cpu.set_register_u16(reg, result);
                     cpu.set_pzscyv(result as u16, carry, overflow);
                     2
-                } else {
+                }))
+            } else {
+                let name = register_name_u16(reg);
+                (format!("SUB {name}, mem"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
                     let addr = cpu.memory_address(mode, mem);
-                    let src  = cpu.read_u8(addr);
-                    let dst  = cpu.register_value_u8(reg);
+                    let src  = cpu.read_u16(addr);
+                    let dst  = cpu.register_value_u16(reg);
                     let (result, carry) = dst.overflowing_sub(src);
                     let (_, overflow) = (dst as i16).overflowing_sub(src as i16);
-                    cpu.set_register_u8(reg, result);
+                    cpu.set_register_u16(reg, result);
                     cpu.set_pzscyv(result as u16, carry, overflow);
                     if addr % 2 == 0 { 6 } else { 8 }
-                }
-            }))
+                }))
+            }
         },
 
         0x2C => unimplemented!("SUB b, ia"),
@@ -711,14 +721,18 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                 (0b000, 0b11) => {
                     let src = cpu.next_u16() as i16;
                     let [lo, hi] = src.to_le_bytes();
-                    (format!("ADDW {}, {src:04X}", register_name_u16(mem)), vec![op, arg, lo, hi], Box::new(move |cpu: &mut CPU|{
-                        let dst = cpu.register_value_u16(mem) as i16;
-                        let (result, carry) = (dst as u16).overflowing_add(src as u16);
-                        let (_, overflow) = dst.overflowing_add(src);
-                        cpu.set_register_u16(mem, result);
-                        cpu.set_pzscyv(result, carry, overflow);
-                        2
-                    }))
+                    (
+                        format!("ADDW {}, {src:04X}", register_name_u16(mem)),
+                        vec![op, arg, lo, hi],
+                        Box::new(move |cpu: &mut CPU|{
+                            let dst = cpu.register_value_u16(mem) as i16;
+                            let (result, carry) = (dst as u16).overflowing_add(src as u16);
+                            let (_, overflow) = dst.overflowing_add(src);
+                            cpu.set_register_u16(mem, result);
+                            cpu.set_pzscyv(result, carry, overflow);
+                            2
+                        })
+                    )
                 },
                 (0b001, _) => unimplemented!("ORW"),
                 (0b010, _) => unimplemented!("ADDCW"),
@@ -1526,8 +1540,33 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                 (0b011, _) => unimplemented!("neg rm"),
                 (0b100, _) => unimplemented!("mulu rm"),
                 (0b101, _) => unimplemented!("mul rm"),
-                (0b110, _) => unimplemented!("divu rm"),
+                (0b110, _) => {
+                    unimplemented!("divu rm")
+/*
+#define DIVUB                                               \
+	uresult = Wreg(AW);                                 \
+	uresult2 = uresult % tmp;                               \
+	if ((uresult /= tmp) > 0xff) {                          \
+		nec_interrupt(NEC_DIVIDE_VECTOR, BRK); break;                            \
+	} else {                                                \
+		Breg(AL) = uresult;                             \
+		Breg(AH) = uresult2;                            \
+	}
+*/
+
+                },
                 (0b111, 0b11) => (format!("DIV"), vec![op, arg], Box::new(move|cpu: &mut CPU|{
+/*
+#define DIVB                                                \
+	result = (int16_t)Wreg(AW);                           \
+	result2 = result % (int16_t)((int8_t)tmp);                  \
+	if ((result /= (int16_t)((int8_t)tmp)) > 0xff) {            \
+		nec_interrupt(NEC_DIVIDE_VECTOR, BRK); break;                            \
+	} else {                                                \
+		Breg(AL) = result;                              \
+		Breg(AH) = result2;                             \
+	}
+*/
                     let t = cpu.aw() as i16;
                     let dst = cpu.register_value_u8((arg & B_REG) >> 3) as i16;
                     if (((t / dst) > 0) && ((t / dst) <= 0x7F)) ||
@@ -1575,41 +1614,82 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                 (0b011, _) => unimplemented!("negw rm"),
                 (0b100, _) => unimplemented!("muluw rm"),
                 (0b101, _) => unimplemented!("mulw rm"),
-                (0b110, _) => unimplemented!("divuw rm"),
-                (0b111, 0b11) => (format!("DIVW"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
-                    let [b0, b1] = cpu.dw().to_le_bytes();
-                    let [b2, b3] = cpu.aw().to_le_bytes();
-                    let t = i32::from_le_bytes([b0, b1, b2, b3]);
-                    let mode = (arg & 0b11000000) >> 6;
-                    let dst = cpu.register_value_u16((arg & B_REG) >> 3) as i32;
-                    if (((t / dst) > 0) && ((t / dst) <= 0x7FFF)) ||
-                       (((t / dst) < 0) && ((t / dst) > (0 - 0x7FFFF - 1)))
-                    {
-                        cpu.set_dw((t % dst) as u16);
-                        cpu.set_aw((t / dst) as u16);
-                    }
-                    cpu.push_u16(cpu.psw());
-                    cpu.set_ie(false);
-                    cpu.set_brk(false);
-                    //cpu.push_u16(cpu.ps());
-                    //cpu.set_ps(u16::from_le_bytes([0x2, 0x3]));
-                    //cpu.push_u16(cpu.pc());
-                    //cpu.set_pc(u16::from_le_bytes([0x0, 0x1]));
-                    24
-                })),
-                (0b111, _) => (format!("DIVW"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
-                    let [b0, b1] = cpu.dw().to_le_bytes();
-                    let [b2, b3] = cpu.aw().to_le_bytes();
-                    let t = i32::from_le_bytes([b0, b1, b2, b3]);
-                    let mode = (arg & 0b11000000) >> 6;
-                    unimplemented!();
-                })),
+                (0b110, _) => {
+/*
+#define DIVUW                                               \
+	uresult = (((uint32_t)Wreg(DW)) << 16) | Wreg(AW);\
+	uresult2 = uresult % tmp;                               \
+	if ((uresult /= tmp) > 0xffff) {                        \
+		nec_interrupt(NEC_DIVIDE_VECTOR, BRK); break;                            \
+	} else {                                                \
+		Wreg(AW)=uresult;                               \
+		Wreg(DW)=uresult2;                              \
+	}
+*/
+/*
+#define DIVW                                                \
+	result = ((uint32_t)Wreg(DW) << 16) + Wreg(AW);   \
+	result2 = result % (int32_t)((int16_t)tmp);                 \
+	if ((result /= (int32_t)((int16_t)tmp)) > 0xffff) {         \
+		nec_interrupt(NEC_DIVIDE_VECTOR, BRK); break;                            \
+	} else {                                                \
+		Wreg(AW)=result;                                \
+		Wreg(DW)=result2;                               \
+	}
+*/
+                    unimplemented!("divuw rm")
+                },
+
+                (0b111, 0b11) => (
+                    format!("DIVW {}", register_name_u16(mem)),
+                    vec![op, arg],
+                    Box::new(move |cpu: &mut CPU|{
+                        let divisor   = cpu.register_value_u16(mem) as u32;
+                        let dividend  = ((cpu.dw() as u32) << 16) + cpu.aw() as u32;
+                        let remainder = dividend % divisor;
+                        let result    = dividend / divisor; 
+                        if result > 0xffff {
+                            panic!("divide error")
+                        } else {
+                            cpu.set_aw(result.try_into().expect("u32 didn't fit in u16"));
+                            cpu.set_dw(remainder.try_into().expect("u32 didn't fit in u16"));
+                        }
+                        24
+                    })
+                ),
+
+                (0b111, _) => (
+                    format!("DIVW mem"),
+                    vec![op, arg],
+                    Box::new(move |cpu: &mut CPU|{
+                        let address  = cpu.memory_address(mode, mem);
+                        let divisor  = cpu.read_u16(address) as u32;
+                        let dividend  = ((cpu.dw() as u32) << 16) + cpu.aw() as u32;
+                        let remainder = dividend % divisor;
+                        let result    = dividend / divisor; 
+                        if result > 0xffff {
+                            panic!("divide error")
+                        } else {
+                            cpu.set_aw(result.try_into().expect("u32 didn't fit in u16"));
+                            cpu.set_dw(remainder.try_into().expect("u32 didn't fit in u16"));
+                        }
+                        24
+                    })
+                ),
+
                 _ => panic!("invalid group1 instruction {code:b}"),
             }
         },
 
-        0xF8 => (format!("CLR1 CY"), vec![op], Box::new(clr1_cy)),
-        0xF9 => (format!("SET1 CY"), vec![op], Box::new(set1_cy)),
+        0xF8 => (format!("CLR1 CY"), vec![op], Box::new(move |cpu: &mut CPU|{
+            cpu.set_cy(false);
+            2
+        })),
+
+        0xF9 => (format!("SET1 CY"), vec![op], Box::new(move |cpu: &mut CPU|{
+            cpu.set_cy(true);
+            2
+        })),
 
         0xFA => (format!("DI"), vec![op], Box::new(move |cpu: &mut CPU|{
             cpu.set_ie(false);
@@ -1621,8 +1701,15 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
             2
         })),
 
-        0xFC => (format!("CLR1 DIR"), vec![op], Box::new(clr1_dir)),
-        0xFD => (format!("SET1 DIR"), vec![op], Box::new(set1_dir)),
+        0xFC => (format!("CLR1 DIR"), vec![op], Box::new(move |cpu: &mut CPU|{
+            cpu.set_dir(false);
+            2
+        })),
+
+        0xFD => (format!("SET1 DIR"), vec![op], Box::new(move |cpu: &mut CPU|{
+            cpu.set_dir(true);
+            2
+        })),
 
         0xFE => {
             let [arg, mode, code, mem] = get_mode_code_mem(cpu);
@@ -1633,7 +1720,7 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                         let value = cpu.register_value_u8(mem);
                         let (result, carry) = value.overflowing_add(1);
                         let (_, overflow) = (value as i8).overflowing_add(1);
-                        println!("\n\n==================={value} -> {result} {carry} {overflow}\n\n");
+                        //println!("\n\n==================={value} -> {result} {carry} {overflow}\n\n");
                         cpu.set_register_u8(mem, result);
                         cpu.set_pzscyv(result as u16, carry, overflow);
                         2
@@ -1698,6 +1785,7 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                     let addr = cpu.memory_address(mode, mem);
                     let pc = cpu.read_u16(addr);
                     cpu.push_u16(cpu.pc());
+                    unimplemented!();
                     if addr % 2 == 0 { 15 } else { 23 }
                 })),
                 0b011 => (format!("CALL32 {arg}"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
@@ -1706,6 +1794,7 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                     let ps = cpu.read_u16(addr + 2);
                     cpu.push_u16(cpu.ps());
                     cpu.push_u16(cpu.pc());
+                    unimplemented!();
                     if addr % 2 == 0 { 15 } else { 23 }
                 })),
                 0b100 => {
