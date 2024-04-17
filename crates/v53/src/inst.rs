@@ -731,7 +731,17 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                 (0b100, _) => unimplemented!("AND"),
                 (0b101, _) => unimplemented!("SUB"),
                 (0b110, _) => unimplemented!("XOR"),
-                (0b111, 0b11) => unimplemented!("cmp reg, imm"),
+                (0b111, 0b11) => {
+                    let name = register_name_u8(mem);
+                    let src  = cpu.next_u8();
+                    (format!("CMP {name}, {src}"), vec![op, arg, src], Box::new(move|cpu: &mut CPU|{
+                        let dst = cpu.register_value_u8(mem);
+                        let (result, carry) = dst.overflowing_sub(src);
+                        let (_, overflow) = (dst as i8).overflowing_sub(src as i8);
+                        cpu.set_pzscyv(result as u16, carry, overflow);
+                        2
+                    }))
+                },
                 (0b111, _) => (format!("CMP"), vec![op, arg], Box::new(move|cpu: &mut CPU|{
                     let addr = cpu.memory_address(mode, mem);
                     let dst = cpu.read_u8(addr);
@@ -1245,8 +1255,71 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
         0xBE => (format!("MOV IX"), vec![op], Box::new(mov_ix_i)),
         0xBF => (format!("MOV IY"), vec![op], Box::new(mov_iy_i)),
 
-        0xC0 => unimplemented!("SHIFT"),
-        0xC1 => unimplemented!("SHIFT"),
+        0xC0 => {
+            let [arg, mode, code, mem] = get_mode_code_mem(cpu);
+            match code {
+                0b000 => {
+                    unimplemented!("rol");
+                },
+                0b001 => {
+                    unimplemented!("ror");
+                },
+                0b010 => {
+                    unimplemented!("rolc");
+                },
+                0b011 => {
+                    unimplemented!("rorc");
+                },
+                0b100 => {
+                    unimplemented!("shl");
+                },
+                0b101 => {
+                    unimplemented!("shr");
+                },
+                0b110 => {
+                    panic!("invalid shift code 0b110");
+                },
+                0b111 => {
+                    unimplemented!("shra");
+                },
+                _ => {
+                    unreachable!("shift code {code:b}");
+                }
+            }
+        },
+
+        0xC1 => {
+            let [arg, mode, code, mem] = get_mode_code_mem(cpu);
+            match code {
+                0b000 => {
+                    unimplemented!("rol");
+                },
+                0b001 => {
+                    unimplemented!("ror");
+                },
+                0b010 => {
+                    unimplemented!("rolc");
+                },
+                0b011 => {
+                    unimplemented!("rorc");
+                },
+                0b100 => {
+                    unimplemented!("shl");
+                },
+                0b101 => {
+                    unimplemented!("shr");
+                },
+                0b110 => {
+                    panic!("invalid shift code 0b110");
+                },
+                0b111 => {
+                    unimplemented!("shra");
+                },
+                _ => {
+                    unreachable!("shift code {code:b}");
+                }
+            }
+        },
 
         0xC2 => {
             let pop = cpu.next_u16();
@@ -1321,21 +1394,51 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
             if cpu.pc() % 2 == 1 { 19 } else { 13 }
         })),
 
-        0xD0 => unimplemented!("SHIFT b"),
+        0xD0 => {
+            let [arg, mode, code, mem] = get_mode_code_mem(cpu);
+            match code {
+                0b000 => {
+                    unimplemented!("rol");
+                },
+                0b001 => {
+                    unimplemented!("ror");
+                },
+                0b010 => {
+                    unimplemented!("rolc");
+                },
+                0b011 => {
+                    unimplemented!("rorc");
+                },
+                0b100 => {
+                    unimplemented!("shl");
+                },
+                0b101 => {
+                    unimplemented!("shr");
+                },
+                0b110 => {
+                    panic!("invalid shift code 0b110");
+                },
+                0b111 => {
+                    unimplemented!("shra");
+                },
+                _ => {
+                    unreachable!("shift code {code:b}");
+                }
+            }
+        },
 
         0xD1 => {
-            let arg = cpu.next_u8();
-            (format!("SHIFTW"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
-                let code = (arg & B_REG) >> 3;
-                let source = get_source_word(cpu, arg);
-                match code {
-                    0b000 => {
-                        unimplemented!("rol");
-                    },
-                    0b001 => {
-                        unimplemented!("ror");
-                    },
-                    0b010 => {
+            let [arg, mode, code, mem] = get_mode_code_mem(cpu);
+            match code {
+                0b000 => {
+                    unimplemented!("rol");
+                },
+                0b001 => {
+                    unimplemented!("ror");
+                },
+                0b010 => {
+                    (format!("ROLC"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
+                        let source = get_source_word(cpu, arg);
                         let cy  = cpu.cy() as u16;
                         let msb = (source & W15) >> 15;
                         let nsb = (source & W14) >> 14;
@@ -1344,11 +1447,14 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                         cpu.set_cy(msb > 0);
                         cpu.set_v(msb != nsb);
                         2
-                    },
-                    0b011 => {
-                        unimplemented!("rorc");
-                    },
-                    0b100 => {
+                    }))
+                },
+                0b011 => {
+                    unimplemented!("rorc");
+                },
+                0b100 => {
+                    (format!("SHL"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
+                        let source = get_source_word(cpu, arg);
                         let msb       = source & W15;
                         let shifted   = source << 1;
                         let msb_after = shifted >> 15;
@@ -1356,28 +1462,30 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                         cpu.set_cy(msb > 0);
                         cpu.set_v(msb != msb_after);
                         2
-                    },
-                    0b101 => {
-                        let lsb        = source & W0;
-                        let msb_before = (source & W15) >> 15;
-                        let shifted    = source >> 1;
-                        let msb_after  = (source & W15) >> 15;
+                    }))
+                },
+                0b101 => {
+                    (format!("SHR"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
+                        let source = get_source_word(cpu, arg);
+                        let msb       = source & W15;
+                        let shifted   = source << 1;
+                        let msb_after = shifted >> 15;
                         set_source_word(cpu, arg, shifted);
-                        cpu.set_cy(lsb > 0);
-                        cpu.set_v(msb_before != msb_after);
+                        cpu.set_cy(msb > 0);
+                        cpu.set_v(msb != msb_after);
                         2
-                    },
-                    0b110 => {
-                        panic!("invalid shift code 0b110");
-                    },
-                    0b111 => {
-                        unimplemented!("shra");
-                    },
-                    _ => {
-                        unreachable!("shift code {code:b}");
-                    }
+                    }))
+                },
+                0b110 => {
+                    panic!("invalid shift code 0b110");
+                },
+                0b111 => {
+                    unimplemented!("shra");
+                },
+                _ => {
+                    unreachable!("shift code {code:b}");
                 }
-            }))
+            }
         },
 
         0xD2 => unimplemented!("SHIFT b, port"),
@@ -1593,10 +1701,19 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                     let [lo, hi] = disp.to_le_bytes();
                     let imm = cpu.next_u8();
                     (
-                        format!("TEST {mem}, {imm:02X}"),
-                        vec![op, arg, lo, hi, imm],
+                        format!("TEST mem, {imm:02X}"),
+                        vec![op, arg, imm],
                         Box::new(move |cpu: &mut CPU|{
-                            unimplemented!()
+                            let address = match mem {
+                                0b110 => disp,
+                                _ => unimplemented!("mode={mode:b} mem={mem:b}"),
+                            } as u32;
+                            let data = cpu.read_u8(address);
+                            let result = data & imm;
+                            cpu.set_pzs(result as u16);
+                            cpu.set_cy(false);
+                            cpu.set_v(false);
+                            2
                         })
                     )
                 },
