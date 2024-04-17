@@ -1783,18 +1783,22 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                 },
                 0b010 => (format!("CALL16 {arg}"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
                     let addr = cpu.memory_address(mode, mem);
-                    let pc = cpu.read_u16(addr);
                     cpu.push_u16(cpu.pc());
-                    unimplemented!();
+                    let pc = cpu.read_u16(addr);
+                    cpu.set_pc(pc);
                     if addr % 2 == 0 { 15 } else { 23 }
                 })),
                 0b011 => (format!("CALL32 {arg}"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
                     let addr = cpu.memory_address(mode, mem);
-                    let pc = cpu.read_u16(addr + 0);
-                    let ps = cpu.read_u16(addr + 2);
+
                     cpu.push_u16(cpu.ps());
+                    let ps = cpu.read_u16(addr + 2);
+                    cpu.set_ps(ps);
+
                     cpu.push_u16(cpu.pc());
-                    unimplemented!();
+                    let pc = cpu.read_u16(addr + 0);
+                    cpu.set_pc(pc);
+
                     if addr % 2 == 0 { 15 } else { 23 }
                 })),
                 0b100 => {
