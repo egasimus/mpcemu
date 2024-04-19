@@ -93,18 +93,32 @@ impl CPU {
 
     /// Read and execute the next instruction in the program
     pub fn step (&mut self, debug: bool) {
-        let addr   = self.program_address();
-        let pc     = self.pc();
-        let opcode = self.next_u8();
-        self.opcode = opcode;
-        let (name, bytes, instruction) = v53_instruction(self, opcode);
+        let (addr, pc, (name, bytes, instruction)) = self.fetch_instruction();
         if debug {
             self.dump_state(pc);
             self.dump_instruction(addr, &name, &bytes);
         }
+        self.execute_instruction(instruction)
+    }
+
+    pub fn fetch_instruction (&mut self) -> (
+        u32, u16, (String, Vec<u8>, Box<dyn Fn(&mut CPU)->u64>)
+    ) {
+        let addr   = self.program_address();
+        let pc     = self.pc();
+        let opcode = self.next_u8();
+        self.opcode = opcode;
+        (addr, pc, v53_instruction(self, opcode))
+    }
+
+    pub fn execute_instruction (&mut self, instruction: Box<dyn Fn(&mut CPU)->u64>) {
         self.clock += instruction(self);
         // Reset segment override, except if it was just set:
-        if !((opcode == 0x26) || (opcode == 0x2E) || (opcode == 0x36) || (opcode == 0x3E)) {
+        // FIXME: make this a part of instruction decoding
+        let opcode = self.opcode;
+        if !(
+            (opcode == 0x26) || (opcode == 0x2E) || (opcode == 0x36) || (opcode == 0x3E)
+        ) {
             self.segment = None
         }
     }

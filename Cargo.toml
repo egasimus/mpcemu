@@ -1,2 +1,4 @@
 [workspace]
 members = ["./crates/cli", "./crates/core", "./crates/v53"]
+
+[examples.mpc2kxl]
