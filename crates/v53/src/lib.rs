@@ -207,6 +207,132 @@ impl CPU {
         }
     }
 
+    pub fn parse_effective_address (&mut self, mode: u8, mem: u8)
+        -> (String, Vec<u8>, Box<dyn Fn(&mut CPU)->u16>)
+    {
+        match mode {
+            0b00 => match mem {
+                0b000 => (
+                    "BW + IX".into(), vec![],
+                    Box::new(|cpu: &mut CPU|{cpu.bw() + cpu.ix()})
+                ),
+                0b001 => (
+                    "BW + IY".into(), vec![],
+                    Box::new(|cpu: &mut CPU|{cpu.bw() + cpu.iy()})
+                ),
+                0b010 => (
+                    "BP + IX".into(), vec![],
+                    Box::new(|cpu: &mut CPU|{cpu.bp() + cpu.ix()})
+                ),
+                0b011 => (
+                    "BP + IY".into(), vec![],
+                    Box::new(|cpu: &mut CPU|{cpu.bp() + cpu.iy()})
+                ),
+                0b100 => (
+                    "IX".into(), vec![],
+                    Box::new(|cpu: &mut CPU|{cpu.ix()})
+                ),
+                0b101 => (
+                    "IY".into(), vec![],
+                    Box::new(|cpu: &mut CPU|{cpu.iy()})
+                ),
+                0b110 => {
+                    let direct = self.next_u16();
+                    (
+                        format!("{direct}"), direct.to_le_bytes().to_vec(),
+                        Box::new(move |_|{direct})
+                    )
+                },
+                0b111 => (
+                    "BW".into(), vec![],
+                    Box::new(|cpu: &mut CPU|{cpu.bw()})
+                ),
+                _ => panic!("invalid memory inner mode {:b}", mem)
+            },
+            0b01 => {
+                let disp  = self.next_u8();
+                let bytes = vec![disp];
+                let disp  = disp as u16;
+                match mem {
+                    0b000 => (
+                        format!("BW + IX + {disp:02X}"), bytes,
+                        Box::new(move |cpu: &mut CPU|{cpu.bw() + cpu.ix() + disp})
+                    ),
+                    0b001 => (
+                        format!("BW + IY + {disp:02X}"), bytes,
+                        Box::new(move |cpu: &mut CPU|{cpu.bw() + cpu.iy() + disp})
+                    ),
+                    0b010 => (
+                        format!("BP + IX + {disp:02X}"), bytes,
+                        Box::new(move|cpu: &mut CPU|{cpu.bp() + cpu.ix() + disp})
+                    ),
+                    0b011 => (
+                        format!("BP + IY + {disp:02X}"), bytes,
+                        Box::new(move|cpu: &mut CPU|{cpu.bp() + cpu.iy() + disp})
+                    ),
+                    0b100 => (
+                        format!("IX + {disp:02X}"), bytes,
+                        Box::new(move|cpu: &mut CPU|{cpu.ix() + disp})
+                    ),
+                    0b101 => (
+                        format!("IY + {disp:02X}"), bytes,
+                        Box::new(move|cpu: &mut CPU|{cpu.iy() + disp})
+                    ),
+                    0b110 => (
+                        format!("BP + {disp:02X}"), bytes,
+                        Box::new(move|cpu: &mut CPU|{cpu.bp() + disp})
+                    ),
+                    0b111 => (
+                        format!("BW + {disp:02X}"), bytes,
+                        Box::new(move|cpu: &mut CPU|{cpu.bw() + disp})
+                    ),
+                    _ => panic!("invalid memory inner mode {:b}", mem)
+                }
+            },
+            0b10 => {
+                let disp  = self.next_u16();
+                let bytes = disp.to_le_bytes().to_vec();
+                match mem {
+                    0b000 => (
+                        format!("BW + IX + {disp:04X}"), bytes,
+                        Box::new(move|cpu: &mut CPU|{cpu.bw() + cpu.ix() + disp})
+                    ),
+                    0b001 => (
+                        format!("BW + IY + {disp:04X}"), bytes,
+                        Box::new(move|cpu: &mut CPU|{cpu.bw() + cpu.iy() + disp})
+                    ),
+                    0b010 => (
+                        format!("BP + IX + {disp:04X}"), bytes,
+                        Box::new(move|cpu: &mut CPU|{cpu.bp() + cpu.ix() + disp})
+                    ),
+                    0b011 => (
+                        format!("BP + IY + {disp:04X}"), bytes,
+                        Box::new(move|cpu: &mut CPU|{cpu.bp() + cpu.iy() + disp})
+                    ),
+                    0b100 => (
+                        format!("IX + {disp:04X}"), bytes,
+                        Box::new(move|cpu: &mut CPU|{cpu.ix() + disp})
+                    ),
+                    0b101 => (
+                        format!("IY + {disp:04X}"), bytes,
+                        Box::new(move|cpu: &mut CPU|{cpu.iy() + disp})
+                    ),
+                    0b110 => (
+                        format!("BP + {disp:04X}"), bytes,
+                        Box::new(move|cpu: &mut CPU|{cpu.bp() + disp})
+                    ),
+                    0b111 => (
+                        format!("BW + {disp:04X}"), bytes,
+                        Box::new(move|cpu: &mut CPU|{cpu.bw() + disp})
+                    ),
+                    _ => panic!("invalid memory inner mode {:b}", mem)
+                }
+            },
+            0b11 => panic!(),
+            _ => unreachable!()
+        }
+    }
+
     #[inline]
     pub fn memory_address (&mut self, mode: u8, mem: u8) -> u32 {
         match mode {

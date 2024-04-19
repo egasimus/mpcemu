@@ -990,7 +990,18 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
             }))
         },
 
-        0x8D => unimplemented!("LDEA"),
+        0x8D => {
+            let [arg, mode, reg, mem] = get_mode_reg_mem(cpu);
+            let dst = register_name_u16(reg);
+            let (src, mut bytes, compute_address) = cpu.parse_effective_address(mode, mem);
+            bytes.insert(0, arg);
+            bytes.insert(0, op);
+            (format!("LDEA {dst}, {src}"), bytes, Box::new(move |cpu: &mut CPU|{
+                let address = compute_address(cpu);
+                cpu.set_register_u16(reg, address);
+                2
+            }))
+        },
 
         0x8E => {
             let [arg, mode, sreg, mem] = get_mode_sreg_mem(cpu);
