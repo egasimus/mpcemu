@@ -976,7 +976,8 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
 
         0x8C => {
             let [arg, mode, sreg, mem] = get_mode_sreg_mem(cpu);
-            (format!("MOV mem, sreg"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
+            let name = segment_register_name(sreg);
+            (format!("MOV mem, {name}"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
                 let value = cpu.segment_register_value(sreg);
                 if mode == 0b11 {
                     let dst = cpu.register_reference_u16(mem);
@@ -1005,17 +1006,21 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
 
         0x8E => {
             let [arg, mode, sreg, mem] = get_mode_sreg_mem(cpu);
-            (format!("MOVW sreg, mem"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
-                if mode == 0b11 {
+            let name = segment_register_name(sreg);
+            if mode == 0b11 {
+                let src = register_name_u16(mem);
+                (format!("MOVW {name}, {src}"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
                     let src = cpu.register_value_u16(mem);
                     let dst = cpu.segment_register_reference(sreg);
                     *dst = src;
                     2
-                } else {
-                    let _value = cpu.next_u16();
-                    unimplemented!();
-                }
-            }))
+                }))
+            } else {
+                let (src, mut bytes, compute_address) = cpu.parse_effective_address(mode, mem);
+                bytes.insert(0, arg);
+                bytes.insert(0, op);
+                unimplemented!();
+            }
         },
 
         0x8F => {
@@ -1109,7 +1114,11 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
             2
         })),
 
-        0x9C => (format!("PUSH PSW"), vec![op], Box::new(push_psw)),
+        0x9C => (format!("PUSH PSW"), vec![op], Box::new(move |cpu: &mut CPU| {
+            let data = cpu.psw();
+            cpu.push_u16(data);
+            if cpu.sp() % 2 == 0 { 5 } else { 9 }
+        })),
 
         0x9D => (format!("POP PSW"), vec![op], Box::new(move |cpu: &mut CPU| {
             let value = cpu.pop_u16();
@@ -1170,6 +1179,7 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
         0xA5 => (format!("MOVBKW"), vec![op], Box::new(move |cpu: &mut CPU| {
             let dst = cpu.ds1() as u32 * 0x10 + cpu.iy() as u32;
             let src = cpu.effective_address(cpu.ix() as u32);
+            println!("{:04X} {src:04X}", cpu.cw());
             cpu.set_byte(dst + 0, cpu.get_byte(src + 0));
             cpu.set_byte(dst + 1, cpu.get_byte(src + 1));
             if cpu.dir() {
@@ -1289,10 +1299,38 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
             }))
         },
 
-        0xBC => (format!("MOV SP"), vec![op], Box::new(mov_sp_i)),
-        0xBD => (format!("MOV BP"), vec![op], Box::new(mov_bp_i)),
-        0xBE => (format!("MOV IX"), vec![op], Box::new(mov_ix_i)),
-        0xBF => (format!("MOV IY"), vec![op], Box::new(mov_iy_i)),
+        0xBC => {
+            let arg = cpu.next_u16();
+            let [lo, hi] = arg.to_le_bytes();
+            (format!("MOV SP, {arg:04X}"), vec![op, lo, hi], Box::new(move|cpu: &mut CPU|{
+                cpu.set_sp(arg);
+                2
+            }))
+        },
+        0xBD => {
+            let arg = cpu.next_u16();
+            let [lo, hi] = arg.to_le_bytes();
+            (format!("MOV BP, {arg:04X}"), vec![op, lo, hi], Box::new(move|cpu: &mut CPU|{
+                cpu.set_bp(arg);
+                2
+            }))
+        },
+        0xBE => {
+            let arg = cpu.next_u16();
+            let [lo, hi] = arg.to_le_bytes();
+            (format!("MOV IX, {arg:04X}"), vec![op, lo, hi], Box::new(move|cpu: &mut CPU|{
+                cpu.set_ix(arg);
+                2
+            }))
+        },
+        0xBF => {
+            let arg = cpu.next_u16();
+            let [lo, hi] = arg.to_le_bytes();
+            (format!("MOV IY, {arg:04X}"), vec![op, lo, hi], Box::new(move|cpu: &mut CPU|{
+                cpu.set_iy(arg);
+                2
+            }))
+        },
 
         0xC0 => {
             let [arg, mode, code, mem] = get_mode_code_mem(cpu);

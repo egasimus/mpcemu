@@ -277,3 +277,13 @@ pub fn register_name_u16 (reg: u8) -> &'static str {
         _ => unreachable!()
     }
 }
+
+pub fn segment_register_name (sreg: u8) -> &'static str {
+    match sreg {
+        0b00 => "DS1",
+        0b01 => "PS",
+        0b10 => "SS",
+        0b11 => "DS0",
+        _ => unreachable!()
+    }
+}

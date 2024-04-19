@@ -19,7 +19,7 @@ fn main () -> Result<(), Box<dyn std::error::Error>> {
 
     println!("\n\nRunning from {:x}:", cpu.program_address());
     loop {
-        cpu.step(true);
+        cpu.step(cpu.clock > 524288);
         // 0xF986C out 0E0h, al -> write to screen
         //if address == 0xFAD79
             //return Ok(())
