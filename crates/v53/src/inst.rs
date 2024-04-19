@@ -600,7 +600,7 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
 
         0x6E => (format!("OUTM"), vec![op], Box::new(move |cpu: &mut CPU|{
             let data = cpu.read_u8(cpu.ix() as u32);
-            cpu.output_u8(cpu.dw() as u32, data);
+            cpu.output_u8(cpu.dw(), data);
             if cpu.dir() {
                 cpu.ix = cpu.ix - 1;
             } else {
@@ -612,7 +612,7 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
 
         0x6F => (format!("OUTMW"), vec![op], Box::new(move |cpu: &mut CPU|{
             let data = cpu.read_u16(cpu.ix() as u32);
-            cpu.output_u16(cpu.dw() as u32, data);
+            cpu.output_u16(cpu.dw(), data);
             if cpu.dir() {
                 cpu.ix = cpu.ix - 2;
             } else {
@@ -1590,7 +1590,7 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
             let addr = cpu.next_u8();
             (format!("OUT"), vec![op, addr], Box::new(move |cpu: &mut CPU| {
                 let data = cpu.al();
-                cpu.output_u8(addr as u32, data);
+                cpu.output_u8(addr as u16, data);
                 3
             }))
         },
@@ -1599,7 +1599,7 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
             let addr = cpu.next_u16();
             let [lo, hi] = addr.to_le_bytes();
             (format!("OUTW"), vec![op, lo, hi], Box::new(move |cpu: &mut CPU| {
-                cpu.output_u16(addr as u32, cpu.aw);
+                cpu.output_u16(addr, cpu.aw);
                 5
             }))
         },
@@ -1659,12 +1659,12 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
         })),
 
         0xEE => (format!("OUT DW, AL"), vec![op], Box::new(move |cpu: &mut CPU|{
-            cpu.output_u8(cpu.dw() as u32, cpu.al());
+            cpu.output_u8(cpu.dw(), cpu.al());
             3
         })),
 
         0xEF => (format!("OUTW DW, AW"), vec![op], Box::new(move |cpu: &mut CPU|{
-            cpu.output_u16(cpu.dw() as u32, cpu.aw());
+            cpu.output_u16(cpu.dw(), cpu.aw());
             5
         })),
 

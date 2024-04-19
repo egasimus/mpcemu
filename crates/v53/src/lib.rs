@@ -9,6 +9,8 @@ mod dump;
 
 pub(crate) use self::{bit::*, reg::*, flag::*, inst::*};
 
+use std::collections::BTreeMap;
+
 pub struct CPU {
     memory:   [u8;0x100000],
     extended: [u8;0xA0000],
@@ -34,8 +36,10 @@ pub struct CPU {
     iy:  u16,
 
     pub segment: Option<Segment>,
-    opcode: u8,
-    pub clock: u64,
+    opcode:      u8,
+    pub clock:   u64,
+
+    outputs: BTreeMap<u16, Box<dyn Fn(&CPU)->()>>,
 }
 
 /// Segment override
@@ -83,6 +87,7 @@ impl CPU {
             segment:  None,
             opcode:   0xF1,
             clock:    0x0000,
+            outputs:  BTreeMap::new(),
         }
     }
 
@@ -560,13 +565,20 @@ impl CPU {
         hi << 8 | lo
     }
 
+    pub fn on_output (&mut self, addr: u16, callback: Box<dyn Fn(&CPU)->()>) {
+        self.outputs.insert(addr, callback);
+    }
+
     /// Write byte to input port
-    pub fn output_u8 (&mut self, addr: u32, data: u8) {
+    pub fn output_u8 (&mut self, addr: u16, data: u8) {
         self.ports[addr as usize] = data;
+        if let Some(callback) = self.outputs.get(&addr) {
+            callback(&self);
+        }
     }
 
     /// Write byte to output port
-    pub fn output_u16 (&mut self, addr: u32, data: u16) {
+    pub fn output_u16 (&mut self, addr: u16, data: u16) {
         let [lo, hi] = data.to_le_bytes();
         self.output_u8(addr + 0, lo);
         self.output_u8(addr + 1, hi);
@@ -579,7 +591,7 @@ impl CPU {
         let [lo, hi] = data.to_le_bytes();
         self.memory[sp + 0] = lo;
         self.memory[sp + 1] = hi;
-        self.dump_stack(4);
+        //self.dump_stack(4);
     }
 
     pub fn pop_u16 (&mut self) -> u16 {
@@ -587,7 +599,7 @@ impl CPU {
         let lo = self.memory[sp + 0];
         let hi = self.memory[sp + 1];
         self.set_sp(self.sp() + 2);
-        self.dump_stack(4);
+        //self.dump_stack(4);
         u16::from_le_bytes([lo, hi])
     }
 
