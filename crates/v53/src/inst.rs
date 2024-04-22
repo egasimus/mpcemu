@@ -1590,21 +1590,45 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
         0xDE => unimplemented!("FPO1"),
         0xDF => unimplemented!("FPO1"),
 
-        0xE0 => unimplemented!("DBNZE"),
+        0xE0 => {
+            let arg = cpu.next_i8();
+            (format!("DBNZNE {arg:02X}"), vec![op, arg as u8], Box::new(move |cpu: &mut CPU| {
+                let value           = cpu.cw();
+                let (result, carry) = value.overflowing_sub(1);
+                let (_, overflow)   = (value as i8).overflowing_sub(1);
+                cpu.set_cw(result);
+                cpu.set_pzscyv(result, carry, overflow);
+                if !cpu.z() { cpu.jump_i8(arg); 6 } else { 3 }
+            }))
+        },
 
-        0xE1 => unimplemented!("DBNZE"),
+        0xE1 => {
+            let arg = cpu.next_i8();
+            (format!("DBNZE {arg:02X}"), vec![op, arg as u8], Box::new(move |cpu: &mut CPU| {
+                let value           = cpu.cw();
+                let (result, carry) = value.overflowing_sub(1);
+                let (_, overflow)   = (value as i8).overflowing_sub(1);
+                cpu.set_cw(result);
+                cpu.set_pzscyv(result, carry, overflow);
+                if cpu.z() { cpu.jump_i8(arg); 6 } else { 3 }
+            }))
+        },
 
         0xE2 => {
             let arg = cpu.next_i8();
-            (format!("DBNZ {arg}"), vec![op, arg as u8], Box::new(move |cpu: &mut CPU| {
-                cpu.cw = cpu.cw.overflowing_sub(1).0;
-                if cpu.cw > 0 { cpu.jump_i8(arg); 6 } else { 3 }
+            (format!("DBNZ {arg:02X}"), vec![op, arg as u8], Box::new(move |cpu: &mut CPU| {
+                let value           = cpu.cw();
+                let (result, carry) = value.overflowing_sub(1);
+                let (_, overflow)   = (value as i8).overflowing_sub(1);
+                cpu.set_cw(result);
+                cpu.set_pzscyv(result, carry, overflow);
+                if cpu.cw() > 0 { cpu.jump_i8(arg); 6 } else { 3 }
             }))
         },
 
         0xE3 => {
             let arg = cpu.next_i8();
-            (format!("BCWZ {arg}"), vec![op, arg as u8], Box::new(move |cpu: &mut CPU| {
+            (format!("BCWZ {arg:02X}"), vec![op, arg as u8], Box::new(move |cpu: &mut CPU| {
                 if cpu.cw() == 0 { cpu.jump_i8(arg); 6 } else { 3 }
             }))
         },
