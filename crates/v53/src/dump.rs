@@ -62,4 +62,8 @@ impl CPU {
         }
     }
 
+    pub fn dump_interrupt_vector_table (&self) {
+        self.dump_at(0, 16, 64)
+    }
+
 }

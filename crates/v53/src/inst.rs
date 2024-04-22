@@ -138,11 +138,14 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
 
         0x0F => {
             let arg = cpu.next_u8();
+            let addr = cpu.next_u8();
             match arg {
 
-                0xE0 => (format!("BRKXA"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
-                    let addr = cpu.next_u8() as u32;
+                0xE0 => (format!("BRKXA {addr:02X}"), vec![op, arg, addr], Box::new(move |cpu: &mut CPU|{
+                    let addr = addr as u32;//cpu.next_u8() as u32;
+                    //let addr = cpu.next_u8() as u32;
                     //panic!("{addr} {:x?}", &cpu.memory[addr*4..addr*4+4]);
+                    cpu.dump_interrupt_vector_table();
                     cpu.pc = u16::from_le_bytes([
                         cpu.get_byte(addr * 4 + 0),
                         cpu.get_byte(addr * 4 + 1),
@@ -152,13 +155,14 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                         cpu.get_byte(addr * 4 + 3),
                     ]);
                     cpu.set_xa(true);
-                    //println!("\n==========BRKXA {:x} {:x} {:x} {:x}", addr, cpu.pc, cpu.ps, cpu.program_address());
+                    println!("\n==========BRKXA {:04X} {:x} {:x} {:x}", addr*4, cpu.pc, cpu.ps, cpu.program_address());
                     // TODO: set XA (internal I/O address: FF80H)
                     12
                 })),
 
-                0xF0 => (format!("RETXA"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
-                    let addr = cpu.next_u8() as u32;
+                0xF0 => (format!("RETXA {addr:02X}"), vec![op, arg, addr], Box::new(move |cpu: &mut CPU|{
+                    let addr = addr as u32;
+                    //cpu.next_u8() as u32;
                     cpu.pc = u16::from_le_bytes([
                         cpu.get_byte(addr * 4 + 0),
                         cpu.get_byte(addr * 4 + 1),

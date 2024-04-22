@@ -501,7 +501,7 @@ impl CPU {
             Some(Segment::PS)  => self.ps,
             Some(Segment::SS)  => self.ss
         } as u32 * 0x10;
-        segment + addr as u32
+        (segment + addr as u32) % 0xFFFFF
     }
 
     /// Target address (always offset from DS1)
