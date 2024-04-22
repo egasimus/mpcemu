@@ -1,5 +1,84 @@
 use crate::*;
 
+impl CPU {
+
+    pub fn get_register_u8 (&self, reg: u8) -> u8 {
+        match reg {
+            0b000 => self.al(),
+            0b001 => self.cl(),
+            0b010 => self.dl(),
+            0b011 => self.bl(),
+            0b100 => self.ah(),
+            0b101 => self.ch(),
+            0b110 => self.dh(),
+            0b111 => self.bh(),
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn get_register_u16 (&self, reg: u8) -> u16 {
+        match reg {
+            0b000 => self.aw(),
+            0b001 => self.cw(),
+            0b010 => self.dw(),
+            0b011 => self.bw(),
+            0b100 => self.sp(),
+            0b101 => self.bp(),
+            0b110 => self.ix(),
+            0b111 => self.iy(),
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn set_register_u8 (&mut self, reg: u8, value: u8) {
+        match reg {
+            0b000 => self.set_al(value),
+            0b001 => self.set_cl(value),
+            0b010 => self.set_dl(value),
+            0b011 => self.set_bl(value),
+            0b100 => self.set_ah(value),
+            0b101 => self.set_ch(value),
+            0b110 => self.set_dh(value),
+            0b111 => self.set_bh(value),
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn set_register_u16 (&mut self, reg: u8, value: u16) {
+        match reg {
+            0b000 => self.set_aw(value),
+            0b001 => self.set_cw(value),
+            0b010 => self.set_dw(value),
+            0b011 => self.set_bw(value),
+            0b100 => self.set_sp(value),
+            0b101 => self.set_bp(value),
+            0b110 => self.set_ix(value),
+            0b111 => self.set_iy(value),
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn get_segment_register (&self, sreg: u8) -> u16 {
+        match sreg {
+            0b00 => self.ds1,
+            0b01 => self.ps,
+            0b10 => self.ss,
+            0b11 => self.ds0,
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn set_segment_register (&mut self, sreg: u8, value: u16) {
+        match sreg {
+            0b00 => self.ds1 = value,
+            0b01 => self.ps = value,
+            0b10 => self.ss = value,
+            0b11 => self.ds0 = value,
+            _ => unreachable!(),
+        }
+    }
+}
+
 macro_rules! define_general_purpose_register {
     (
         $(#[$attr:meta])*

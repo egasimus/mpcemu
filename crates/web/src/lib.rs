@@ -7,7 +7,7 @@ use js_sys::{
 };
 
 #[wasm_bindgen]
-pub struct V53(mpcemu_v53::V53);
+pub struct V53(mpcemu_v53::CPU);
 
 #[wasm_bindgen]
 impl V53 {
@@ -16,7 +16,7 @@ impl V53 {
         console_error_panic_hook::set_once();
         let mem: Vec<u8> = vec![0u8; rom.length() as usize];
         rom.copy_to(mem);
-        Ok(Self(V53::new(mem)))
+        Ok(Self(mpcemu_v53::CPU::new(mem)))
     }
 
     #[wasm_bindgen]

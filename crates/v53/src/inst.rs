@@ -16,8 +16,8 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                     format!("ADD {}, {}", register_name_u8(reg_dst), register_name_u8(reg_src)),
                     vec![op, arg],
                     Box::new(move |cpu: &mut CPU| {
-                        let src = cpu.register_value_u8(reg_src);
-                        let dst = cpu.register_value_u8(reg_dst);
+                        let src = cpu.get_register_u8(reg_src);
+                        let dst = cpu.get_register_u8(reg_dst);
                         let (result, carry) = dst.overflowing_add(src);
                         let (_, overflow) = (dst as i8).overflowing_add(src as i8);
                         cpu.set_register_u8(reg_dst, result);
@@ -30,7 +30,7 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                     format!("ADD mem, {}", register_name_u8(reg)),
                     vec![op, arg],
                     Box::new(move |cpu: &mut CPU| {
-                        let src  = cpu.register_value_u8(reg);
+                        let src  = cpu.get_register_u8(reg);
                         let addr = cpu.memory_address(mode, mem);
                         let dst  = cpu.read_u8(addr);
                         let (result, carry) = dst.overflowing_add(src);
@@ -46,7 +46,7 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
         0x01 => {
             let [arg, mode, reg, mem] = get_mode_reg_mem(cpu);
             (format!("ADDW mem, reg"), vec![op, arg], Box::new(move |cpu: &mut CPU| {
-                let src  = cpu.register_value_u16(reg);
+                let src  = cpu.get_register_u16(reg);
                 let addr = cpu.memory_address(mode, mem);
                 let dst  = cpu.read_u16(addr);
                 let (result, carry) = dst.overflowing_add(src);
@@ -87,8 +87,8 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
             let [arg, mode, reg, mem] = get_mode_reg_mem(cpu);
             if mode == 0b11 {
                 (format!("OR"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
-                    let src = cpu.register_value_u8(mem);
-                    let dst = cpu.register_value_u8(reg);
+                    let src = cpu.get_register_u8(mem);
+                    let dst = cpu.get_register_u8(reg);
                     let result = dst | src;
                     cpu.set_register_u8(reg, result);
                     cpu.set_pzs(result as u16);
@@ -98,7 +98,7 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                 (format!("OR"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
                     let addr = cpu.memory_address(mode, mem);
                     let src  = cpu.read_u8(addr);
-                    let dst  = cpu.register_value_u8(reg);
+                    let dst  = cpu.get_register_u8(reg);
                     let result = dst | src;
                     cpu.set_register_u8(reg, result);
                     cpu.set_pzs(result as u16);
@@ -111,10 +111,8 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
             let [arg, mode, reg, mem] = get_mode_reg_mem(cpu);
             if mode == 0b11 {
                 (format!("OR"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
-                    let src = cpu.register_value_u16(mem);
-                    let dst = cpu.register_reference_u16(reg);
-                    let result = *dst | src;
-                    *dst = result;
+                    let result = cpu.get_register_u16(reg) | cpu.get_register_u16(mem);
+                    cpu.set_register_u16(reg, result);
                     cpu.set_pzs(result);
                     2
                 }))
@@ -122,9 +120,9 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                 (format!("OR"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
                     let addr = cpu.memory_address(mode, mem);
                     let src  = cpu.read_u16(addr);
-                    let dst  = cpu.register_reference_u16(reg);
-                    let result = *dst | src;
-                    *dst = result;
+                    let dst  = cpu.get_register_u16(reg);
+                    let result = dst | src;
+                    cpu.set_register_u16(reg, result);
                     cpu.set_pzs(result);
                     if addr % 2 == 0 { 6 } else { 8 }
                 }))
@@ -200,7 +198,7 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
             (format!("SUBW"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
                 let addr = cpu.memory_address(mode, mem);
                 let dst  = cpu.read_u16(addr);
-                let src  = cpu.register_value_u16(reg);
+                let src  = cpu.get_register_u16(reg);
                 let cy   = cpu.cy() as u16;
                 let (result, carry) = dst.overflowing_sub(src + cy);
                 let (_, overflow) = (dst as i16).overflowing_sub(src as i16 + cy as i16);
@@ -253,8 +251,8 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                 let reg1 = register_name_u8(reg);
                 let reg2 = register_name_u8(mem);
                 (format!("SUB {reg1}, {reg2}"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
-                    let src = cpu.register_value_u8(mem);
-                    let dst = cpu.register_value_u8(reg);
+                    let src = cpu.get_register_u8(mem);
+                    let dst = cpu.get_register_u8(reg);
                     let (result, carry) = dst.overflowing_sub(src);
                     let (_, overflow) = (dst as i8).overflowing_sub(src as i8);
                     cpu.set_register_u8(reg, result);
@@ -266,7 +264,7 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                 (format!("SUB {name}, mem"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
                     let addr = cpu.memory_address(mode, mem);
                     let src  = cpu.read_u8(addr);
-                    let dst  = cpu.register_value_u8(reg);
+                    let dst  = cpu.get_register_u8(reg);
                     let (result, carry) = dst.overflowing_sub(src);
                     let (_, overflow) = (dst as i8).overflowing_sub(src as i8);
                     cpu.set_register_u8(reg, result);
@@ -282,8 +280,8 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                 let reg1 = register_name_u16(reg);
                 let reg2 = register_name_u16(mem);
                 (format!("SUB {reg1}, {reg2}"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
-                    let src = cpu.register_value_u16(mem);
-                    let dst = cpu.register_value_u16(reg);
+                    let src = cpu.get_register_u16(mem);
+                    let dst = cpu.get_register_u16(reg);
                     let (result, carry) = dst.overflowing_sub(src);
                     let (_, overflow) = (dst as i16).overflowing_sub(src as i16);
                     cpu.set_register_u16(reg, result);
@@ -295,7 +293,7 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                 (format!("SUB {name}, mem"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
                     let addr = cpu.memory_address(mode, mem);
                     let src  = cpu.read_u16(addr);
-                    let dst  = cpu.register_value_u16(reg);
+                    let dst  = cpu.get_register_u16(reg);
                     let (result, carry) = dst.overflowing_sub(src);
                     let (_, overflow) = (dst as i16).overflowing_sub(src as i16);
                     cpu.set_register_u16(reg, result);
@@ -326,8 +324,8 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                     format!("XOR {}, {}", register_name_u8(reg_dst), register_name_u8(reg_src)),
                     vec![op, arg],
                     Box::new(move |cpu: &mut CPU|{
-                        let src = cpu.register_value_u8(mem);
-                        let dst = cpu.register_value_u8(reg);
+                        let src = cpu.get_register_u8(mem);
+                        let dst = cpu.get_register_u8(reg);
                         let result = dst ^ src;
                         cpu.set_register_u8(reg, result);
                         cpu.set_pzs(result as u16);
@@ -341,7 +339,7 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                     Box::new(move |cpu: &mut CPU|{
                         let addr = cpu.memory_address(mode, mem);
                         let src  = cpu.read_u8(addr);
-                        let dst = cpu.register_value_u8(reg);
+                        let dst = cpu.get_register_u8(reg);
                         let result = dst ^ src;
                         cpu.set_register_u8(reg, result);
                         cpu.set_pzs(result as u16);
@@ -360,10 +358,8 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                     format!("XOR {}, {}", register_name_u16(reg_dst), register_name_u16(reg_src)),
                     vec![op, arg],
                     Box::new(move |cpu: &mut CPU|{
-                        let src = cpu.register_value_u16(mem);
-                        let dst = cpu.register_reference_u16(reg);
-                        let result = *dst ^ src;
-                        *dst = result;
+                        let result = cpu.get_register_u16(reg) ^ cpu.get_register_u16(mem);
+                        cpu.set_register_u16(reg, result);
                         cpu.set_pzs(result);
                         2
                     })
@@ -373,11 +369,9 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                     format!("XOR {}, mem", register_name_u16(reg)),
                     vec![op, arg],
                     Box::new(move |cpu: &mut CPU|{
-                        let addr = cpu.memory_address(mode, mem);
-                        let src  = cpu.read_u16(addr);
-                        let dst  = cpu.register_reference_u16(reg);
-                        let result = *dst ^ src;
-                        *dst = result;
+                        let addr   = cpu.memory_address(mode, mem);
+                        let result = cpu.get_register_u16(reg) ^ cpu.read_u16(addr);
+                        cpu.set_register_u16(reg, result);
                         cpu.set_pzs(result);
                         if addr % 2 == 0 { 6 } else { 8 }
                     })
@@ -399,14 +393,14 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
             let [arg, mode, reg, mem] = get_mode_reg_mem(cpu);
             (format!("CMP"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
                 if mode == 0b11 {
-                    let src = cpu.register_value_u8(reg);
-                    let dst = cpu.register_value_u8(mem);
+                    let src = cpu.get_register_u8(reg);
+                    let dst = cpu.get_register_u8(mem);
                     let (result, carry) = dst.overflowing_sub(src);
                     let (_, overflow) = (dst as i8).overflowing_sub(src as i8);
                     cpu.set_pzscyv(result as u16, carry, overflow);
                     2
                 } else {
-                    let src  = cpu.register_value_u8(reg);
+                    let src  = cpu.get_register_u8(reg);
                     let addr = cpu.memory_address(mode, mem);
                     let dst  = cpu.read_u8(addr);
                     let (result, carry) = dst.overflowing_sub(src);
@@ -429,8 +423,8 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                 let reg1 = register_name_u8(reg);
                 let reg2 = register_name_u8(mem);
                 (format!("CMP {reg1}, {reg2}"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
-                    let src = cpu.register_value_u8(mem);
-                    let dst = cpu.register_value_u8(reg);
+                    let src = cpu.get_register_u8(mem);
+                    let dst = cpu.get_register_u8(reg);
                     let (result, carry) = dst.overflowing_sub(src);
                     let (_, overflow) = (dst as i8).overflowing_sub(src as i8);
                     cpu.set_pzscyv(result as u16, carry, overflow);
@@ -441,7 +435,7 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                 (format!("CMP mem, {name}"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
                     let addr = cpu.memory_address(mode, mem);
                     let src  = cpu.read_u8(addr);
-                    let dst  = cpu.register_value_u8(reg);
+                    let dst  = cpu.get_register_u8(reg);
                     let (result, carry) = dst.overflowing_sub(src);
                     let (_, overflow) = (dst as i8).overflowing_sub(src as i8);
                     cpu.set_pzscyv(result as u16, carry, overflow);
@@ -460,10 +454,10 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                 let reg1 = register_name_u16(reg);
                 let reg2 = register_name_u16(mem);
                 (format!("CMPW {reg1}, {reg2}"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
-                    let src = cpu.register_value_u16(mem);
-                    let dst = cpu.register_reference_u16(reg);
-                    let (result, carry) = (*dst).overflowing_sub(src);
-                    let (_, overflow) = (*dst as i16).overflowing_sub(src as i16);
+                    let src = cpu.get_register_u16(mem);
+                    let dst = cpu.get_register_u16(reg);
+                    let (result, carry) = dst.overflowing_sub(src);
+                    let (_, overflow) = (dst as i16).overflowing_sub(src as i16);
                     cpu.set_pzscyv(result, carry, overflow);
                     2
                 }))
@@ -472,7 +466,7 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                 (format!("CMPW mem, {name}"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
                     let addr = cpu.memory_address(mode, mem);
                     let src  = cpu.read_u16(addr);
-                    let dst  = cpu.register_value_u16(reg);
+                    let dst  = cpu.get_register_u16(reg);
                     let (result, carry) = dst.overflowing_sub(src);
                     let (_, overflow) = (dst as i16).overflowing_sub(src as i16);
                     cpu.set_pzscyv(result, carry, overflow);
@@ -760,7 +754,7 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                     let name = register_name_u8(mem);
                     let src  = cpu.next_u8();
                     (format!("CMP {name}, {src}"), vec![op, arg, src], Box::new(move|cpu: &mut CPU|{
-                        let dst = cpu.register_value_u8(mem);
+                        let dst = cpu.get_register_u8(mem);
                         let (result, carry) = dst.overflowing_sub(src);
                         let (_, overflow) = (dst as i8).overflowing_sub(src as i8);
                         cpu.set_pzscyv(result as u16, carry, overflow);
@@ -790,7 +784,7 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                         format!("ADDW {}, {src:04X}", register_name_u16(mem)),
                         vec![op, arg, lo, hi],
                         Box::new(move |cpu: &mut CPU|{
-                            let dst = cpu.register_value_u16(mem) as i16;
+                            let dst = cpu.get_register_u16(mem) as i16;
                             let (result, carry) = (dst as u16).overflowing_add(src as u16);
                             let (_, overflow) = dst.overflowing_add(src);
                             cpu.set_register_u16(mem, result);
@@ -832,7 +826,7 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                     let src = cpu.next_u8() as i16;
                     let [lo, hi] = src.to_le_bytes();
                     (format!("ADDW {}, {src:04X}", register_name_u16(mem)), vec![op, arg, lo, hi], Box::new(move |cpu: &mut CPU|{
-                        let dst = cpu.register_value_u16(mem) as i16;
+                        let dst = cpu.get_register_u16(mem) as i16;
                         let (result, carry) = (dst as u16).overflowing_add(src as u16);
                         let (_, overflow) = dst.overflowing_add(src);
                         cpu.set_register_u16(mem, result);
@@ -875,7 +869,7 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                     let src = cpu.next_u8();
                     (format!("CMPW {}, {src:04X}", register_name_u16(mem)), vec![op, arg, src],
                         Box::new(move |cpu: &mut CPU|{
-                            let dst = cpu.register_value_u16(mem) as i16;
+                            let dst = cpu.get_register_u16(mem) as i16;
                             let (result, carry) = (dst as u16).overflowing_sub(src as u16);
                             let (_, overflow) = dst.overflowing_sub(src as i16);
                             cpu.set_pzscyv(result, carry, overflow);
@@ -905,11 +899,11 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
         0x86 => {
             let [arg, mode, reg, mem] = get_mode_reg_mem(cpu);
             (format!("XCH"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
-                let register_value = cpu.register_value_u8(reg);
+                let get_register = cpu.get_register_u8(reg);
                 let addr           = cpu.memory_address(mode, mem);
                 let memory_value   = cpu.read_u8(addr);
                 cpu.set_register_u8(reg, memory_value);
-                cpu.write_u8(addr, register_value);
+                cpu.write_u8(addr, get_register);
                 if addr % 2 == 1 { 12 } else { 8 }
             }))
         }
@@ -921,7 +915,7 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
             let name = register_name_u8(reg);
             (format!("MOV mem, {name}"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
                 let addr = cpu.memory_address(mode, mem);
-                let val = cpu.register_value_u8(reg);
+                let val = cpu.get_register_u8(reg);
                 cpu.write_u8(addr, val);
                 if addr % 2 == 0 { 3 } else { 5 }
             }))
@@ -932,7 +926,7 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
             let name = register_name_u16(reg);
             (format!("MOVW mem, {name}"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
                 let addr = cpu.memory_address(mode, mem);
-                let val = cpu.register_value_u16(reg);
+                let val = cpu.get_register_u16(reg);
                 cpu.write_u16(addr, val);
                 if addr % 2 == 0 { 3 } else { 5 }
             }))
@@ -944,7 +938,7 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                 let reg1 = register_name_u8(reg);
                 let reg2 = register_name_u8(mem);
                 (format!("MOV {reg1}, {reg2}"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
-                    cpu.set_register_u8(reg, cpu.register_value_u8(mem));
+                    cpu.set_register_u8(reg, cpu.get_register_u8(mem));
                     2
                 }))
             } else {
@@ -964,7 +958,7 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                 let reg1 = register_name_u16(reg);
                 let reg2 = register_name_u16(mem);
                 (format!("MOVW {reg1}, {reg2}"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
-                    cpu.set_register_u16(reg, cpu.register_value_u16(mem));
+                    cpu.set_register_u16(reg, cpu.get_register_u16(mem));
                     2
                 }))
             } else {
@@ -982,10 +976,9 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
             let [arg, mode, sreg, mem] = get_mode_sreg_mem(cpu);
             let name = segment_register_name(sreg);
             (format!("MOV mem, {name}"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
-                let value = cpu.segment_register_value(sreg);
+                let value = cpu.get_segment_register(sreg);
                 if mode == 0b11 {
-                    let dst = cpu.register_reference_u16(mem);
-                    *dst = value;
+                    cpu.set_register_u16(mem, value);
                     2
                 } else {
                     let addr = cpu.memory_address(mode, mem);
@@ -1014,9 +1007,8 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
             if mode == 0b11 {
                 let src = register_name_u16(mem);
                 (format!("MOVW {name}, {src}"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
-                    let src = cpu.register_value_u16(mem);
-                    let dst = cpu.segment_register_reference(sreg);
-                    *dst = src;
+                    let src = cpu.get_register_u16(mem);
+                    cpu.set_segment_register(sreg, src);
                     2
                 }))
             } else {
@@ -1358,7 +1350,7 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                         format!("SHL {name}, {imm:02X}"),
                         vec![op, arg, imm],
                         Box::new(move |cpu: &mut CPU|{
-                            let source    = cpu.register_value_u8(mem);
+                            let source    = cpu.get_register_u8(mem);
                             let msb       = source & B7;
                             let shifted   = source << 1;
                             let msb_after = shifted >> 7;
@@ -1861,7 +1853,7 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
 	}
 */
                     let t = cpu.aw() as i16;
-                    let dst = cpu.register_value_u8((arg & B_REG) >> 3) as i16;
+                    let dst = cpu.get_register_u8((arg & B_REG) >> 3) as i16;
                     if (((t / dst) > 0) && ((t / dst) <= 0x7F)) ||
                        (((t / dst) < 0) && ((t / dst) > (0 - 0x7F - 1)))
                     {
@@ -1937,7 +1929,7 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                     format!("DIVW {}", register_name_u16(mem)),
                     vec![op, arg],
                     Box::new(move |cpu: &mut CPU|{
-                        let divisor   = cpu.register_value_u16(mem) as u32;
+                        let divisor   = cpu.get_register_u16(mem) as u32;
                         let dividend  = ((cpu.dw() as u32) << 16) + cpu.aw() as u32;
                         let remainder = dividend % divisor;
                         let result    = dividend / divisor; 
@@ -2010,7 +2002,7 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                 (0b000, 0b11) => {
                     let reg_name = register_name_u8(mem);
                     (format!("INC {reg_name}"), vec![op, arg], Box::new(move |cpu: &mut CPU|{
-                        let value = cpu.register_value_u8(mem);
+                        let value = cpu.get_register_u8(mem);
                         let (result, carry) = value.overflowing_add(1);
                         let (_, overflow) = (value as i8).overflowing_add(1);
                         //println!("\n\n==================={value} -> {result} {carry} {overflow}\n\n");

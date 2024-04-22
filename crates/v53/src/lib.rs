@@ -136,96 +136,6 @@ impl CPU {
         self.pc = ((self.pc as i16) + displace) as u16;
     }
 
-    pub fn register_value_u8 (&self, reg: u8) -> u8 {
-        match reg {
-            0b000 => self.al(),
-            0b001 => self.cl(),
-            0b010 => self.dl(),
-            0b011 => self.bl(),
-            0b100 => self.ah(),
-            0b101 => self.ch(),
-            0b110 => self.dh(),
-            0b111 => self.bh(),
-            _ => unreachable!(),
-        }
-    }
-
-    pub fn register_value_u16 (&self, reg: u8) -> u16 {
-        match reg {
-            0b000 => self.aw(),
-            0b001 => self.cw(),
-            0b010 => self.dw(),
-            0b011 => self.bw(),
-            0b100 => self.sp(),
-            0b101 => self.bp(),
-            0b110 => self.ix(),
-            0b111 => self.iy(),
-            _ => unreachable!(),
-        }
-    }
-
-    pub fn set_register_u8 (&mut self, reg: u8, value: u8) {
-        match reg {
-            0b000 => self.set_al(value),
-            0b001 => self.set_cl(value),
-            0b010 => self.set_dl(value),
-            0b011 => self.set_bl(value),
-            0b100 => self.set_ah(value),
-            0b101 => self.set_ch(value),
-            0b110 => self.set_dh(value),
-            0b111 => self.set_bh(value),
-            _ => unreachable!(),
-        }
-    }
-
-    pub fn set_register_u16 (&mut self, reg: u8, value: u16) {
-        match reg {
-            0b000 => self.set_aw(value),
-            0b001 => self.set_cw(value),
-            0b010 => self.set_dw(value),
-            0b011 => self.set_bw(value),
-            0b100 => self.set_sp(value),
-            0b101 => self.set_bp(value),
-            0b110 => self.set_ix(value),
-            0b111 => self.set_iy(value),
-            _ => unreachable!(),
-        }
-    }
-
-    pub fn register_reference_u16 (&mut self, reg: u8) -> &mut u16 {
-        match reg {
-            0b000 => &mut self.aw,
-            0b001 => &mut self.cw,
-            0b010 => &mut self.dw,
-            0b011 => &mut self.bw,
-            0b100 => &mut self.sp,
-            0b101 => &mut self.bp,
-            0b110 => &mut self.ix,
-            0b111 => &mut self.iy,
-            _ => unreachable!(),
-        }
-    }
-
-    pub fn segment_register_value (&self, sreg: u8) -> u16 {
-        match sreg {
-            0b00 => self.ds1,
-            0b01 => self.ps,
-            0b10 => self.ss,
-            0b11 => self.ds0,
-            _ => unreachable!(),
-        }
-    }
-
-    pub fn segment_register_reference (&mut self, sreg: u8) -> &mut u16 {
-        match sreg {
-            0b00 => &mut self.ds1,
-            0b01 => &mut self.ps,
-            0b10 => &mut self.ss,
-            0b11 => &mut self.ds0,
-            _ => unreachable!(),
-        }
-    }
-
     pub fn parse_effective_address (&mut self, mode: u8, mem: u8)
         -> (String, Vec<u8>, Box<dyn Fn(&mut CPU)->u16>)
     {
@@ -663,7 +573,7 @@ pub fn get_source_word (state: &mut CPU, arg: u8) -> u16 {
     let mode = (arg & B_MODE) >> 6;
     let mem  = arg & B_MEM;
     match mode {
-        0b11 => state.register_value_u16(mem),
+        0b11 => state.get_register_u16(mem),
         _ => {
             let addr = state.memory_address(mode, mem);
             state.read_u16(addr)
@@ -672,12 +582,12 @@ pub fn get_source_word (state: &mut CPU, arg: u8) -> u16 {
 }
 
 #[inline]
-pub fn set_source_word (state: &mut CPU, arg: u8, val: u16){
+pub fn set_source_word (state: &mut CPU, arg: u8, val: u16) {
     let mode = (arg & B_MODE) >> 6;
     let mem  = arg & B_MEM;
     match mode {
         0b11 => {
-            *state.register_reference_u16(mem) = val;
+            state.set_register_u16(mem, val);
         },
         _ => {
             let addr = state.memory_address(mode, mem);
