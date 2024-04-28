@@ -3,7 +3,5 @@ members = [
   "./crates/cli",
   "./crates/core",
   "./crates/v53",
-  "./crates/web"
+  "./crates/wasm"
 ]
-
-[examples.mpc2kxl]
