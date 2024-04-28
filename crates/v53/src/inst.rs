@@ -73,7 +73,11 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
             }))
         },
 
-        0x06 => (format!("PUSH DS1"), vec![op], Box::new(push_ds1)),
+        0x06 => (format!("PUSH DS1"), vec![op], Box::new(move |cpu: &mut CPU|{
+            let value = cpu.ds1();
+            cpu.push_u16(value);
+            if cpu.sp() % 2 == 0 { 5 } else { 3 }
+        })),
         0x07 => (format!("POP DS1"), vec![op], Box::new(move |cpu: &mut CPU| {
             let value = cpu.pop_u16();
             cpu.set_ds1(value);
@@ -132,7 +136,11 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
         0x0C => unimplemented!("Bitwise OR b ia"),
         0x0D => unimplemented!("Bitwise OR w ia"),
 
-        0x0E => (format!("PUSH PS"), vec![op], Box::new(push_ps)),
+        0x0E => (format!("PUSH PS"), vec![op], Box::new(move |cpu: &mut CPU|{
+            let value = cpu.ps();
+            cpu.push_u16(value);
+            if cpu.sp() % 2 == 0 { 5 } else { 3 }
+        })),
 
         0x0F => {
             let arg = cpu.next_u8();
@@ -185,7 +193,11 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
         0x14 => unimplemented!("ADDC"),
         0x15 => unimplemented!("ADDC"),
 
-        0x16 => (format!("PUSH SS"), vec![op], Box::new(push_ss)),
+        0x16 => (format!("PUSH SS"), vec![op], Box::new(move |cpu: &mut CPU|{
+            let value = cpu.ss();
+            cpu.push_u16(value);
+            if cpu.sp() % 2 == 0 { 5 } else { 3 }
+        })),
         0x17 => (format!("POP SS"),  vec![op], Box::new(move |cpu: &mut CPU| {
             let value = cpu.pop_u16();
             cpu.set_ss(value);
@@ -212,7 +224,11 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
         0x1C => unimplemented!("SUBC acc, imm"),
         0x1D => unimplemented!("SUBCW acc, imm"),
 
-        0x1E => (format!("PUSH DS0"), vec![op], Box::new(push_ds0)),
+        0x1E => (format!("PUSH DS0"), vec![op], Box::new(move |cpu: &mut CPU|{
+            let value = cpu.ds0();
+            cpu.push_u16(value);
+            if cpu.sp() % 2 == 0 { 5 } else { 3 }
+        })),
         0x1F => (format!("POP DS0"),  vec![op], Box::new(move |cpu: &mut CPU| {
             let value = cpu.pop_u16();
             cpu.set_ds0(value);
@@ -527,15 +543,47 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
         0x4E => (format!("DEC IX"), vec![op], Box::new(dec_ix)),
         0x4F => (format!("DEC IY"), vec![op], Box::new(dec_iy)),
 
-        0x50 => (format!("PUSH AW"), vec![op], Box::new(push_aw)),
-        0x51 => (format!("PUSH CW"), vec![op], Box::new(push_cw)),
-        0x52 => (format!("PUSH DW"), vec![op], Box::new(push_dw)),
-        0x53 => (format!("PUSH BW"), vec![op], Box::new(push_bw)),
+        0x50 => (format!("PUSH AW"), vec![op], Box::new(move |cpu: &mut CPU|{
+            let value = cpu.aw();
+            cpu.push_u16(value);
+            if cpu.sp() % 2 == 0 { 5 } else { 3 }
+        })),
+        0x51 => (format!("PUSH CW"), vec![op], Box::new(move |cpu: &mut CPU|{
+            let value = cpu.cw();
+            cpu.push_u16(value);
+            if cpu.sp() % 2 == 0 { 5 } else { 3 }
+        })),
+        0x52 => (format!("PUSH DW"), vec![op], Box::new(move |cpu: &mut CPU|{
+            let value = cpu.dw();
+            cpu.push_u16(value);
+            if cpu.sp() % 2 == 0 { 5 } else { 3 }
+        })),
+        0x53 => (format!("PUSH BW"), vec![op], Box::new(move |cpu: &mut CPU|{
+            let value = cpu.bw();
+            cpu.push_u16(value);
+            if cpu.sp() % 2 == 0 { 5 } else { 3 }
+        })),
 
-        0x54 => (format!("PUSH SP"), vec![op], Box::new(push_sp)),
-        0x55 => (format!("PUSH BP"), vec![op], Box::new(push_bp)),
-        0x56 => (format!("PUSH IX"), vec![op], Box::new(push_ix)),
-        0x57 => (format!("PUSH IY"), vec![op], Box::new(push_iy)),
+        0x54 => (format!("PUSH SP"), vec![op], Box::new(move |cpu: &mut CPU|{
+            let value = cpu.sp();
+            cpu.push_u16(value);
+            if cpu.sp() % 2 == 0 { 5 } else { 3 }
+        })),
+        0x55 => (format!("PUSH BP"), vec![op], Box::new(move |cpu: &mut CPU|{
+            let value = cpu.bp();
+            cpu.push_u16(value);
+            if cpu.sp() % 2 == 0 { 5 } else { 3 }
+        })),
+        0x56 => (format!("PUSH IX"), vec![op], Box::new(move |cpu: &mut CPU|{
+            let value = cpu.ix();
+            cpu.push_u16(value);
+            if cpu.sp() % 2 == 0 { 5 } else { 3 }
+        })),
+        0x57 => (format!("PUSH IY"), vec![op], Box::new(move |cpu: &mut CPU|{
+            let value = cpu.iy();
+            cpu.push_u16(value);
+            if cpu.sp() % 2 == 0 { 5 } else { 3 }
+        })),
 
         0x58 => (format!("POP AW"), vec![op], Box::new(move |cpu: &mut CPU|{
             let value = cpu.pop_u16();

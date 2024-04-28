@@ -90,8 +90,6 @@ macro_rules! define_general_purpose_register {
         $mov_l_i:ident
         $inc:ident
         $dec:ident
-        $push:ident
-        $pop:ident
     ) => {
         $(#[$attr])*
         impl CPU {
@@ -159,19 +157,6 @@ macro_rules! define_general_purpose_register {
             state.set_v(signed_overflow);
             2
         }
-
-        #[inline]
-        pub fn $push (state: &mut CPU) -> u64 {
-            let data = state.$w();
-            state.push_u16(data);
-            if state.sp() % 2 == 0 { 5 } else { 9 }
-        }
-
-        #[inline]
-        pub fn $pop (state: &mut CPU) {
-            let value = state.pop_u16();
-            state.$w_set(value);
-        }
     }
 }
 
@@ -189,7 +174,7 @@ define_general_purpose_register!(
     ///   - Byte input/output
     ///   - BCD rotate
     ///   - Data exchange
-    aw set_aw ah set_ah al set_al mov_aw_i mov_ah_i mov_al_i inc_aw dec_aw push_aw pop_aw
+    aw set_aw ah set_ah al set_al mov_aw_i mov_ah_i mov_al_i inc_aw dec_aw
 );
 
 define_general_purpose_register!(
@@ -197,7 +182,7 @@ define_general_purpose_register!(
     ///
     /// - BW is default for:
     ///   - Data exchange (table reference)
-    bw set_bw bh set_bh bl set_bl mov_bw_i mov_bh_i mov_bl_i inc_bw dec_bw push_bw pop_bw
+    bw set_bw bh set_bh bl set_bl mov_bw_i mov_bh_i mov_bl_i inc_bw dec_bw
 );
 
 define_general_purpose_register!(
@@ -210,7 +195,7 @@ define_general_purpose_register!(
     ///   - Shift instructions
     ///   - Rotate instructions
     ///   - BCD operation
-    cw set_cw ch set_ch cl set_cl mov_cw_i mov_ch_i mov_cl_i inc_cw dec_cw push_cw pop_cw
+    cw set_cw ch set_ch cl set_cl mov_cw_i mov_ch_i mov_cl_i inc_cw dec_cw
 );
 
 define_general_purpose_register!(
@@ -219,7 +204,7 @@ define_general_purpose_register!(
     /// - DW is default for:
     ///   - Word multiplication/division
     ///   - Indirect addressing input/output
-    dw set_dw dh set_dh dl set_dl mov_dw_i mov_dh_i mov_dl_i inc_dw dec_dw push_dw pop_dw
+    dw set_dw dh set_dh dl set_dl mov_dw_i mov_dh_i mov_dl_i inc_dw dec_dw
 );
 
 macro_rules! define_special_register {
@@ -229,8 +214,6 @@ macro_rules! define_special_register {
         $mov:ident
         $inc:ident
         $dec:ident
-        $push:ident
-        $pop:ident
     ) => {
         $(#[$attr])*
         impl CPU {
@@ -272,61 +255,48 @@ macro_rules! define_special_register {
             state.set_v(signed_overflow);
             2
         }
-
-        #[inline]
-        pub fn $push (state: &mut CPU) -> u64 {
-            let data = state.$w();
-            state.push_u16(data);
-            if state.sp() % 2 == 0 { 5 } else { 9 }
-        }
-
-        #[inline]
-        pub fn $pop (state: &mut CPU) {
-            let value = state.pop_u16();
-            state.$w_set(value);
-        }
     }
 }
 
 define_special_register!(
     /// The PS register contains the location of the program segment.
-    ps  set_ps   mov_ps_i    inc_ps  dec_ps  push_ps  pop_ps
+    ps  set_ps   mov_ps_i    inc_ps  dec_ps
 );
 define_special_register!(
     /// The SS register contains the location of the stack segment.
-    ss  set_ss   mov_ss_i    iec_ss  dec_ss  push_ss  pop_ss
+    ss  set_ss   mov_ss_i    iec_ss  dec_ss
 );
 define_special_register!(
     /// The DS0 register contains the location of data segment 0.
-    ds0 set_ds0  mov_ds0_i   inc_ds0 dec_ds0 push_ds0 pop_ds0
+    ds0 set_ds0  mov_ds0_i   inc_ds0 dec_ds0
 );
 define_special_register!(
     /// The DS1 register contains the location of data segment 1.
-    ds1 set_ds1  mov_ds1_i   inc_ds1 dec_ds1 push_ds1 pop_ds1
+    ds1 set_ds1  mov_ds1_i   inc_ds1 dec_ds1
 );
 define_special_register!(
     /// The stack pointer register.
-    sp  set_sp   mov_sp_i    inc_sp  dec_sp  push_sp  pop_sp
+    sp  set_sp   mov_sp_i    inc_sp  dec_sp
 );
 define_special_register!(
     /// The block pointer register.
-    bp  set_bp   mov_bp_i    inc_bp  dec_bp  push_bp  pop_bp
+    bp  set_bp   mov_bp_i    inc_bp  dec_bp
 );
 define_special_register!(
     /// The program counter register.
-    pc  set_pc   mov_pc_i    inc_pc  dec_pc  push_pc  pop_pc
+    pc  set_pc   mov_pc_i    inc_pc  dec_pc
 );
 define_special_register!(
     /// The IX register.
-    ix  set_ix   mov_ix_i    inc_ix  dec_ix  push_ix  pop_ix
+    ix  set_ix   mov_ix_i    inc_ix  dec_ix
 );
 define_special_register!(
     /// The IY register.
-    iy  set_iy   mov_iy_i    inc_iy  dec_iy  push_iy  pop_iy
+    iy  set_iy   mov_iy_i    inc_iy  dec_iy
 );
 define_special_register!(
     /// The PSW (program status word) register contains flags.
-    psw set_psw  mov_psw_i   inc_psw dec_psw push_psw pop_psw
+    psw set_psw  mov_psw_i   inc_psw dec_psw
 );
 
 pub fn register_name_u8 (reg: u8) -> &'static str {
