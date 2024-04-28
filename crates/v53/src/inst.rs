@@ -1300,16 +1300,63 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
         0xAE => unimplemented!("CMPM"),
         0xAF => unimplemented!("CMPM"),
 
-        0xB0 => (format!("MOV AL"), vec![op], Box::new(mov_al_i)),
-        0xB1 => (format!("MOV CL"), vec![op], Box::new(mov_cl_i)),
-        0xB2 => (format!("MOV DL"), vec![op], Box::new(mov_dl_i)),
-        0xB3 => (format!("MOV BL"), vec![op], Box::new(mov_bl_i)),
+        0xB0 => {
+            let arg = cpu.next_u8();
+            (format!("MOV AL, {arg:02X}"), vec![op, arg], Box::new(move |cpu: &mut CPU| {
+                cpu.set_al(arg);
+                2
+            }))
+        },
+        0xB1 => {
+            let arg = cpu.next_u8();
+            (format!("MOV CL, {arg:02X}"), vec![op, arg], Box::new(move |cpu: &mut CPU| {
+                cpu.set_cl(arg);
+                2
+            }))
+        },
+        0xB2 => {
+            let arg = cpu.next_u8();
+            (format!("MOV DL, {arg:02X}"), vec![op, arg], Box::new(move |cpu: &mut CPU| {
+                cpu.set_dl(arg);
+                2
+            }))
+        },
+        0xB3 => {
+            let arg = cpu.next_u8();
+            (format!("MOV BL, {arg:02X}"), vec![op, arg], Box::new(move |cpu: &mut CPU| {
+                cpu.set_bl(arg);
+                2
+            }))
+        },
 
-        0xB4 => (format!("MOV AH"), vec![op], Box::new(mov_ah_i)),
-        0xB5 => (format!("MOV CH"), vec![op], Box::new(mov_ch_i)),
-        0xB6 => (format!("MOV DH"), vec![op], Box::new(mov_dh_i)),
-        0xB7 => (format!("MOV BH"), vec![op], Box::new(mov_bh_i)),
-
+        0xB4 => {
+            let arg = cpu.next_u8();
+            (format!("MOV AH, {arg:02X}"), vec![op, arg], Box::new(move |cpu: &mut CPU| {
+                cpu.set_ah(arg);
+                2
+            }))
+        },
+        0xB5 => {
+            let arg = cpu.next_u8();
+            (format!("MOV CH, {arg:02X}"), vec![op, arg], Box::new(move |cpu: &mut CPU| {
+                cpu.set_ch(arg);
+                2
+            }))
+        },
+        0xB6 => {
+            let arg = cpu.next_u8();
+            (format!("MOV DH, {arg:02X}"), vec![op, arg], Box::new(move |cpu: &mut CPU| {
+                cpu.set_dh(arg);
+                2
+            }))
+        },
+        0xB7 => {
+            let arg = cpu.next_u8();
+            (format!("MOV BH, {arg:02X}"), vec![op, arg], Box::new(move |cpu: &mut CPU| {
+                cpu.set_bh(arg);
+                2
+            }))
+        },
         0xB8 => {
             let word = cpu.next_u16();
             let [lo, hi] = word.to_le_bytes();
