@@ -1916,37 +1916,90 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                     )
                 },
                 (0b001, _) => panic!("undefined group1 instruction"),
+                (0b010, 0b11) => unimplemented!("not rm"),
                 (0b010, _) => unimplemented!("not rm"),
+                (0b011, 0b11) => unimplemented!("neg rm"),
                 (0b011, _) => unimplemented!("neg rm"),
-                (0b100, _) => unimplemented!("mulu rm"),
-                (0b101, _) => unimplemented!("mul rm"),
+                (0b100, 0b11) => {
+                    (format!("MULU {arg:02X}"), vec![op, arg], Box::new(move|cpu: &mut CPU|{
+                        let src = cpu.al() as u16;
+                        let dst = cpu.get_register_u8((arg & B_REG) >> 3) as u16;
+                        let result = src * dst;
+                        cpu.set_aw(result);
+                        cpu.set_cy(result > 0xFF);
+                        cpu.set_v(result > 0xFF);
+                        8
+                    }))
+                },
+                (0b100, _) => {
+                    (format!("MULU {arg:02X}"), vec![op, arg], Box::new(move|cpu: &mut CPU|{
+                        unimplemented!("mulu rm");
+                        0
+                    }))
+                },
+                (0b101, 0b11) => {
+                    (format!("MUL {arg:02X}"), vec![op, arg], Box::new(move|cpu: &mut CPU|{
+                        unimplemented!("mul rm");
+                        0
+                    }))
+                },
+                (0b101, _) => {
+                    let arg = cpu.next_u8();
+                    (format!("MUL {arg:02X}"), vec![op, arg], Box::new(move|cpu: &mut CPU|{
+                        unimplemented!("mul rm");
+                        0
+                    }))
+                },
+                (0b110, 0b11) => {
+                    (format!("DIVU {arg:02X}"), vec![op, arg], Box::new(move|cpu: &mut CPU|{
+                        let src = cpu.aw();
+                        let dst = cpu.get_register_u16((arg & B_REG) >> 3) as u16;
+                        if src / dst > 0xff {
+                            panic!("divu overflow")
+                        } else {
+                            cpu.set_al((src / dst) as u8);
+                            cpu.set_ah((src % dst) as u8);
+                        }
+                        11
+                    }))
+                },
                 (0b110, _) => {
-                    unimplemented!("divu rm")
-/*
-#define DIVUB                                               \
-	uresult = Wreg(AW);                                 \
-	uresult2 = uresult % tmp;                               \
-	if ((uresult /= tmp) > 0xff) {                          \
-		nec_interrupt(NEC_DIVIDE_VECTOR, BRK); break;                            \
-	} else {                                                \
-		Breg(AL) = uresult;                             \
-		Breg(AH) = uresult2;                            \
-	}
-*/
-
+                    (format!("DIVU {arg:02X}"), vec![op, arg], Box::new(move|cpu: &mut CPU|{
+                        let src  = cpu.aw();
+                        let addr = cpu.memory_address(mode, mem);
+                        let dst  = cpu.read_u8(addr) as u16;
+                        if src / dst > 0xff {
+                            panic!("divu overflow")
+                        } else {
+                            cpu.set_al((src / dst) as u8);
+                            cpu.set_ah((src % dst) as u8);
+                        }
+                        15
+                    /*
+                        #define DIVUB
+                        uresult = Wreg(AW);
+                        uresult2 = uresult % tmp;
+                        if ((uresult /= tmp) > 0xff) {
+                            nec_interrupt(NEC_DIVIDE_VECTOR, BRK); break;
+                        } else {
+                            Breg(AL) = uresult;
+                            Breg(AH) = uresult2;
+                        }
+                    */
+                    }))
                 },
                 (0b111, 0b11) => (format!("DIV"), vec![op, arg], Box::new(move|cpu: &mut CPU|{
-/*
-#define DIVB                                                \
-	result = (int16_t)Wreg(AW);                           \
-	result2 = result % (int16_t)((int8_t)tmp);                  \
-	if ((result /= (int16_t)((int8_t)tmp)) > 0xff) {            \
-		nec_interrupt(NEC_DIVIDE_VECTOR, BRK); break;                            \
-	} else {                                                \
-		Breg(AL) = result;                              \
-		Breg(AH) = result2;                             \
-	}
-*/
+                    /*
+                        #define DIVB
+                        result = (int16_t)Wreg(AW);
+                        result2 = result % (int16_t)((int8_t)tmp);
+                        if ((result /= (int16_t)((int8_t)tmp)) > 0xff) {
+                            nec_interrupt(NEC_DIVIDE_VECTOR, BRK); break;
+                        } else {
+                            Breg(AL) = result;
+                            Breg(AH) = result2;
+                        }
+                    */
                     let t = cpu.aw() as i16;
                     let dst = cpu.get_register_u8((arg & B_REG) >> 3) as i16;
                     if (((t / dst) > 0) && ((t / dst) <= 0x7F)) ||
@@ -1954,6 +2007,8 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                     {
                         cpu.set_ah((t % dst) as u8);
                         cpu.set_al((t / dst) as u8);
+                    } else {
+                        panic!()
                     }
                     //cpu.push_u16(cpu.psw());
                     //cpu.set_ie(false);
@@ -1995,32 +2050,32 @@ pub fn v53_instruction (cpu: &mut CPU, op: u8) -> (
                 (0b100, _) => unimplemented!("muluw rm"),
                 (0b101, _) => unimplemented!("mulw rm"),
                 (0b110, _) => {
-/*
-#define DIVUW                                               \
-	uresult = (((uint32_t)Wreg(DW)) << 16) | Wreg(AW);\
-	uresult2 = uresult % tmp;                               \
-	if ((uresult /= tmp) > 0xffff) {                        \
-		nec_interrupt(NEC_DIVIDE_VECTOR, BRK); break;                            \
-	} else {                                                \
-		Wreg(AW)=uresult;                               \
-		Wreg(DW)=uresult2;                              \
-	}
-*/
-/*
-#define DIVW                                                \
-	result = ((uint32_t)Wreg(DW) << 16) + Wreg(AW);   \
-	result2 = result % (int32_t)((int16_t)tmp);                 \
-	if ((result /= (int32_t)((int16_t)tmp)) > 0xffff) {         \
-		nec_interrupt(NEC_DIVIDE_VECTOR, BRK); break;                            \
-	} else {                                                \
-		Wreg(AW)=result;                                \
-		Wreg(DW)=result2;                               \
-	}
-*/
+                    /*
+                    #define DIVUW
+                      uresult = (((uint32_t)Wreg(DW)) << 16) | Wreg(AW);
+                      uresult2 = uresult % tmp;
+                      if ((uresult /= tmp) > 0xffff) {
+                        nec_interrupt(NEC_DIVIDE_VECTOR, BRK); break;
+                      } else {
+                        Wreg(AW)=uresult;
+                        Wreg(DW)=uresult2;
+                      }
+                    */
                     unimplemented!("divuw rm")
                 },
 
                 (0b111, 0b11) => (
+                    /*
+                    #define DIVW
+                      result = ((uint32_t)Wreg(DW) << 16) + Wreg(AW);
+                      result2 = result % (int32_t)((int16_t)tmp);
+                      if ((result /= (int32_t)((int16_t)tmp)) > 0xffff) {
+                        nec_interrupt(NEC_DIVIDE_VECTOR, BRK); break;
+                      } else {
+                        Wreg(AW)=result;
+                        Wreg(DW)=result2;
+                      }
+                    */
                     format!("DIVW {}", register_name_u16(mem)),
                     vec![op, arg],
                     Box::new(move |cpu: &mut CPU|{
